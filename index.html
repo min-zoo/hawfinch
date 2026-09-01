@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>추석 디저트 선물세트 예약</title>
-<meta name="description" content="추석 디저트 선물세트 사전 예약 페이지입니다.">
-<meta property="og:title" content="추석 디저트 선물세트 예약">
-<meta property="og:description" content="정성껏 준비한 추석 선물세트를 미리 예약하세요.">
+<title>호핀치 추석 디저트 선물세트 예약</title>
+<meta name="description" content="호핀치 추석 디저트 선물세트 사전 예약 페이지입니다.">
+<meta property="og:title" content="호핀치 추석 디저트 선물세트">
+<meta property="og:description" content="정성껏 준비한 추석 선물세트를 미리 예약하세요. 매장 픽업과 택배 발송 모두 가능합니다.">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="stylesheet" as="style" crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
@@ -29,76 +29,138 @@
   <!-- 예약 마감 / 연습 모드 안내가 필요할 때 여기에 표시됩니다 -->
   <div id="banner"></div>
 
-  <form id="form" novalidate>
+  <!-- ============ 첫 화면 : 수령 방법 고르기 ============ -->
+  <section class="section" id="chooseView">
+    <h2 class="section__title">어떻게 받으시겠어요?</h2>
+    <p class="section__hint" style="margin-left:0">고르신 방법에 따라 다음 화면이 달라집니다.</p>
+    <div class="methods" id="methodList"></div>
+  </section>
 
-    <!-- 1. 상품 선택 -->
-    <section class="section">
-      <h2 class="section__title"><span class="section__step">1</span> 선물세트 선택</h2>
-      <p class="section__hint">필요하신 수량만큼 + 버튼을 눌러주세요.</p>
-      <div class="card" id="productList"></div>
-      <p class="error" id="errProducts" hidden>선물세트를 1개 이상 선택해 주세요.</p>
-    </section>
+  <!-- ============ 예약서 ============ -->
+  <div id="formView" hidden>
 
-    <!-- 2. 픽업 -->
-    <section class="section">
-      <h2 class="section__title"><span class="section__step">2</span> 찾아가실 날짜와 시간</h2>
-      <p class="section__hint">매장에서 직접 수령하시는 날짜입니다.</p>
-      <div class="card">
-        <div class="field">
-          <span class="field__label">수령 날짜<span class="req">*</span></span>
-          <div class="chips" id="dateChips"></div>
-          <p class="error" id="errDate" hidden>수령 날짜를 선택해 주세요.</p>
+    <div class="modebar">
+      <span class="modebar__badge" id="modeBadge"></span>
+      <span class="modebar__desc" id="modeDesc"></span>
+      <button class="modebar__change" type="button" id="changeMode">변경</button>
+    </div>
+
+    <form id="form" novalidate>
+
+      <!-- 1. 상품 선택 (공통) -->
+      <section class="section" id="secProducts">
+        <h2 class="section__title"><span class="section__step">1</span> 선물세트 선택</h2>
+        <p class="section__hint">필요하신 수량만큼 + 버튼을 눌러주세요.</p>
+        <div class="card" id="productList"></div>
+        <p class="error" id="errProducts" hidden>선물세트를 1개 이상 선택해 주세요.</p>
+      </section>
+
+      <!-- 2. 픽업 전용 : 수령 날짜와 시간 -->
+      <section class="section" id="secPickup" hidden>
+        <h2 class="section__title"><span class="section__step">2</span> 찾아가실 날짜와 시간</h2>
+        <p class="section__hint">매장에서 직접 수령하시는 날짜입니다.</p>
+        <div class="card">
+          <div class="field">
+            <span class="field__label">수령 날짜<span class="req">*</span></span>
+            <div class="chips" id="pickupDateChips"></div>
+            <p class="error" id="errPickupDate" hidden>수령 날짜를 선택해 주세요.</p>
+          </div>
+          <div class="field">
+            <span class="field__label">수령 시간<span class="req">*</span></span>
+            <div class="chips" id="pickupTimeChips"></div>
+            <p class="error" id="errPickupTime" hidden>수령 시간을 선택해 주세요.</p>
+          </div>
         </div>
-        <div class="field">
-          <span class="field__label">수령 시간<span class="req">*</span></span>
-          <div class="chips" id="timeChips"></div>
-          <p class="error" id="errTime" hidden>수령 시간을 선택해 주세요.</p>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 3. 예약자 정보 -->
-    <section class="section">
-      <h2 class="section__title"><span class="section__step">3</span> 예약자 정보</h2>
-      <p class="section__hint">준비가 완료되면 이 번호로 연락드립니다.</p>
-      <div class="card">
-        <div class="field">
-          <label class="field__label" for="name">성함<span class="req">*</span></label>
-          <input class="input" type="text" id="name" name="name"
-                 autocomplete="name" placeholder="홍길동" maxlength="30">
-          <p class="error" id="errName" hidden>성함을 입력해 주세요.</p>
+      <!-- 주문자(예약자) 정보 (공통 · 단계 번호는 방법에 따라 달라짐) -->
+      <section class="section" id="secOrderer">
+        <h2 class="section__title">
+          <span class="section__step" id="ordererStep">3</span>
+          <span id="ordererTitle">예약자 정보</span>
+        </h2>
+        <p class="section__hint" id="ordererHint">준비가 완료되면 이 번호로 연락드립니다.</p>
+        <div class="card">
+          <div class="field">
+            <label class="field__label" for="name">성함<span class="req">*</span></label>
+            <input class="input" type="text" id="name" name="name"
+                   autocomplete="name" placeholder="홍길동" maxlength="30">
+            <p class="error" id="errName" hidden>성함을 입력해 주세요.</p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="phone">연락처<span class="req">*</span></label>
+            <input class="input" type="tel" id="phone" name="phone"
+                   autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678" maxlength="13">
+            <p class="error" id="errPhone" hidden>연락처를 정확히 입력해 주세요.</p>
+          </div>
+          <div class="field">
+            <label class="field__label" for="memo">요청사항 <span style="font-weight:400;color:var(--ink-faint)">선택</span></label>
+            <textarea class="textarea" id="memo" name="memo" maxlength="300"
+                      placeholder="예) 선물용 포장 부탁드립니다 / 쇼핑백 3개 추가"></textarea>
+          </div>
         </div>
-        <div class="field">
-          <label class="field__label" for="phone">연락처<span class="req">*</span></label>
-          <input class="input" type="tel" id="phone" name="phone"
-                 autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678" maxlength="13">
-          <p class="error" id="errPhone" hidden>연락처를 정확히 입력해 주세요.</p>
+      </section>
+
+      <!-- 3. 택배 전용 : 받는 분과 배송지 -->
+      <section class="section" id="secReceiver" hidden>
+        <h2 class="section__title"><span class="section__step">3</span> 받는 분과 배송지</h2>
+        <p class="section__hint">선물로 보내시는 경우 받으실 분 정보를 적어주세요.</p>
+        <div class="card">
+
+          <div class="field">
+            <label class="check">
+              <input type="checkbox" id="sameAsOrderer">
+              <span>주문자와 동일합니다</span>
+            </label>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="receiverName">받는 분 성함<span class="req">*</span></label>
+            <input class="input" type="text" id="receiverName" maxlength="30" placeholder="홍길동">
+            <p class="error" id="errReceiverName" hidden>받는 분 성함을 입력해 주세요.</p>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="receiverPhone">받는 분 연락처<span class="req">*</span></label>
+            <input class="input" type="tel" id="receiverPhone" inputmode="numeric"
+                   placeholder="010-1234-5678" maxlength="13">
+            <p class="error" id="errReceiverPhone" hidden>받는 분 연락처를 정확히 입력해 주세요.</p>
+          </div>
+
+          <div class="field">
+            <span class="field__label">배송지 주소<span class="req">*</span></span>
+            <div class="addr-row">
+              <input class="input" type="text" id="postcode" maxlength="10"
+                     inputmode="numeric" placeholder="우편번호">
+              <button class="btn btn--ghost" type="button" id="findAddr" hidden>주소 찾기</button>
+            </div>
+            <input class="input" type="text" id="address1" maxlength="120"
+                   placeholder="기본주소 (도로명 또는 지번)" style="margin-top:9px">
+            <input class="input" type="text" id="address2" maxlength="80"
+                   placeholder="상세주소 (동·호수 등)" style="margin-top:9px">
+            <p class="error" id="errAddress" hidden>우편번호와 기본주소를 입력해 주세요.</p>
+          </div>
+
+          <div class="field">
+            <span class="field__label">발송 희망일<span class="req">*</span></span>
+            <div class="chips" id="shipDateChips"></div>
+            <p class="error" id="errShipDate" hidden>발송 희망일을 선택해 주세요.</p>
+          </div>
+
         </div>
-        <div class="field">
-          <label class="field__label" for="memo">요청사항 <span style="font-weight:400;color:var(--ink-faint)">선택</span></label>
-          <textarea class="textarea" id="memo" name="memo" maxlength="300"
-                    placeholder="예) 선물용 포장 부탁드립니다 / 쇼핑백 3개 추가"></textarea>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 합계 -->
-    <section class="section">
-      <h2 class="section__title">예약 내역</h2>
-      <div class="card summary" id="summary"></div>
-      <button class="btn" type="submit" id="submitBtn">예약 신청하기</button>
-      <p class="error" id="errSubmit" hidden></p>
-    </section>
+      <!-- 합계 -->
+      <section class="section">
+        <h2 class="section__title">예약 내역</h2>
+        <div class="card summary" id="summary"></div>
+        <button class="btn" type="submit" id="submitBtn">예약 신청하기</button>
+        <p class="error" id="errSubmit" hidden></p>
+      </section>
 
-  </form>
+    </form>
 
-  <div class="note">
-    <strong>예약 안내</strong>
-    <ul>
-      <li id="noteNotice">결제는 픽업하실 때 매장에서 해주시면 됩니다.</li>
-      <li id="noteClose">예약 마감일 이후에는 신청이 어렵습니다.</li>
-      <li>예약 변경·취소는 아래 매장 번호로 연락 주세요.</li>
-    </ul>
+    <div class="note" id="noteBox"></div>
   </div>
 
   <footer class="footer">
@@ -107,6 +169,9 @@
 
 </main>
 
+<!-- 주소 검색 (불러오지 못하면 직접 입력으로 자동 대체됩니다) -->
+<script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+        onerror="window.__postcodeUnavailable = true"></script>
 <script src="assets/config.js"></script>
 <script src="assets/app.js"></script>
 </body>

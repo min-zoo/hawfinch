@@ -8,6 +8,31 @@
 
   var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
 
+  /* 상태는 픽업과 택배가 다릅니다.
+     픽업  : 대기 → 완료
+     택배  : 대기(입금 전) → 확인(입금 확인) → 완료(발송 완료) */
+  var FLOW = {
+    pickup:   ['대기', '완료'],
+    delivery: ['대기', '확인', '완료'],
+  };
+  var LABEL = {
+    pickup:   { '대기': '준비 대기', '확인': '준비 완료', '완료': '준비 완료' },
+    delivery: { '대기': '입금 대기', '확인': '입금 확인', '완료': '발송 완료' },
+  };
+  var TONE = { '대기': 'pill--wait', '확인': 'pill--mid', '완료': 'pill--done' };
+
+  function statusOf(o) {
+    var s = o.status || '대기';
+    return FLOW[o.method || 'pickup'].indexOf(s) === -1 ? '대기' : s;
+  }
+  function nextStatus(o) {
+    var flow = FLOW[o.method || 'pickup'];
+    return flow[(flow.indexOf(statusOf(o)) + 1) % flow.length];
+  }
+  function labelOf(o) {
+    return (LABEL[o.method || 'pickup'] || LABEL.pickup)[statusOf(o)] || statusOf(o);
+  }
+
   function fmtDateTime(iso) {
     if (!iso) return '';
     var d = new Date(iso);
@@ -21,15 +46,14 @@
   function demoOrders() {
     try {
       return JSON.parse(localStorage.getItem('chuseok-demo-orders') || '[]')
-        .map(function (o) { return Object.assign({ status: '대기' }, o); });
+        .map(function (o) { return Object.assign({ status: '대기', method: 'pickup' }, o); });
     } catch (e) { return []; }
   }
 
   function fetchOrders() {
     if (!CONFIG.sheetUrl) return Promise.resolve(demoOrders());
 
-    var url = CONFIG.sheetUrl + '?action=list&key=' + encodeURIComponent(adminKey);
-    return fetch(url)
+    return fetch(CONFIG.sheetUrl + '?action=list&key=' + encodeURIComponent(adminKey))
       .then(function (r) {
         if (!r.ok) throw new Error('서버 응답 오류 ' + r.status);
         return r.json();
@@ -40,7 +64,7 @@
       });
   }
 
-  function updateStatus(code, status) {
+  function saveStatus(code, status) {
     if (!CONFIG.sheetUrl) {
       try {
         var key = 'chuseok-demo-orders';
@@ -61,33 +85,40 @@
       });
   }
 
-  /* ---------- 화면 그리기 ---------- */
+  /* ---------- 거르기 ---------- */
 
   function visibleOrders() {
     var q      = $('search').value.trim().toLowerCase();
+    var method = $('filterMethod').value;
     var date   = $('filterDate').value;
     var status = $('filterStatus').value;
 
     return orders.filter(function (o) {
+      if (method && (o.method || 'pickup') !== method) return false;
       if (date && o.pickupDate !== date) return false;
-      if (status && (o.status || '대기') !== status) return false;
+      if (status && statusOf(o) !== status) return false;
       if (q) {
-        var hay = [o.code, o.name, o.phone, o.itemsText].join(' ').toLowerCase();
+        var hay = [o.code, o.name, o.phone, o.receiverName, o.receiverPhone,
+                   o.address, o.itemsText].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
     });
   }
 
+  /* ---------- 화면 그리기 ---------- */
+
   function renderStats() {
     var list = visibleOrders();
-    var waiting = list.filter(function (o) { return (o.status || '대기') !== '완료'; }).length;
+    var pickup = list.filter(function (o) { return (o.method || 'pickup') === 'pickup'; }).length;
     var sets = list.reduce(function (s, o) { return s + Number(o.totalCount || 0); }, 0);
     var sum  = list.reduce(function (s, o) { return s + Number(o.totalPrice || 0); }, 0);
+    var todo = list.filter(function (o) { return statusOf(o) !== '완료'; }).length;
 
     var cards = [
       ['예약 건수', list.length + '건'],
-      ['준비 대기', waiting + '건'],
+      ['픽업 / 택배', pickup + ' / ' + (list.length - pickup)],
+      ['처리 대기', todo + '건'],
       ['세트 수량', sets + '개'],
       ['예상 매출', won(sum)],
     ];
@@ -96,6 +127,20 @@
       return '<div class="stat"><div class="stat__label">' + c[0] +
              '</div><div class="stat__value">' + c[1] + '</div></div>';
     }).join('');
+  }
+
+  /* 칸 하나 만들기. sub 는 작은 글씨로 아랫줄에 붙습니다(여러 줄 가능). */
+  function cell(main, sub, cls) {
+    var td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.appendChild(document.createTextNode(main || ''));
+    [].concat(sub || []).filter(Boolean).forEach(function (text) {
+      var s = document.createElement('span');
+      s.className = 'cell-sub';
+      s.textContent = text;
+      td.appendChild(s);
+    });
+    return td;
   }
 
   function renderRows() {
@@ -109,41 +154,53 @@
     $('emptyMsg').hidden = list.length > 0;
 
     list.forEach(function (o) {
-      var done = (o.status || '대기') === '완료';
+      var isDelivery = (o.method || 'pickup') === 'delivery';
       var tr = document.createElement('tr');
-      if (done) tr.className = 'is-done';
+      if (statusOf(o) === '완료') tr.className = 'is-done';
 
-      var cells = [
-        o.code || '',
-        fmtDateTime(o.createdAt),
-        o.name || '',
-        o.phone || '',
-        (o.pickupDateLabel || o.pickupDate || '') + ' ' + (o.pickupTime || ''),
-        o.itemsText || '',
-        won(o.totalPrice),
-        o.memo || '',
-      ];
-
-      cells.forEach(function (text, i) {
-        var td = document.createElement('td');
-        td.textContent = text;
-        if (i === 1 || i === 3 || i === 6) td.className = 'num';
-        tr.appendChild(td);
-      });
+      tr.appendChild(cell(o.code || '', '', 'nowrap'));
+      tr.appendChild(cell(fmtDateTime(o.createdAt), '', 'nowrap num'));
 
       var td = document.createElement('td');
+      td.className = 'nowrap';
+      var tag = document.createElement('span');
+      tag.className = 'tag ' + (isDelivery ? 'tag--delivery' : 'tag--pickup');
+      tag.textContent = isDelivery ? '택배' : '픽업';
+      td.appendChild(tag);
+      tr.appendChild(td);
+
+      tr.appendChild(cell(o.name || '', o.phone || '', 'nowrap'));
+
+      tr.appendChild(isDelivery
+        ? cell(o.receiverName || '', [o.receiverPhone || '', o.address || ''])
+        : cell('—', '', 'nowrap'));
+
+      tr.appendChild(cell(o.pickupDateLabel || o.pickupDate || '',
+                          isDelivery ? '' : (o.pickupTime || ''), 'nowrap'));
+
+      tr.appendChild(cell(o.itemsText || '', '수량 ' + (o.totalCount || 0) + '개'));
+
+      var feeText = '';
+      if (isDelivery) {
+        feeText = o.shippingFee === null || o.shippingFee === undefined
+          ? '배송비 미정' : '배송비 ' + won(o.shippingFee);
+      }
+      tr.appendChild(cell(won(o.totalPrice), feeText, 'num'));
+
+      tr.appendChild(cell(o.memo || ''));
+
+      var stTd = document.createElement('td');
+      stTd.className = 'nowrap';
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'pill ' + (done ? 'pill--done' : 'pill--wait');
-      btn.style.cursor = 'pointer';
-      btn.style.border = 'none';
-      btn.style.font = 'inherit';
-      btn.textContent = done ? '준비 완료' : '준비 대기';
-      btn.title = '눌러서 상태를 바꿉니다';
+      btn.className = 'pill ' + TONE[statusOf(o)];
+      btn.style.cssText = 'cursor:pointer;border:none;font:inherit';
+      btn.textContent = labelOf(o);
+      btn.title = '눌러서 다음 상태로 넘깁니다';
       btn.addEventListener('click', function () {
-        var next = done ? '대기' : '완료';
+        var next = nextStatus(o);
         btn.disabled = true;
-        updateStatus(o.code, next).then(function () {
+        saveStatus(o.code, next).then(function () {
           o.status = next;
           renderStats();
           renderRows();
@@ -152,8 +209,8 @@
           alert('상태 변경 실패: ' + err.message);
         });
       });
-      td.appendChild(btn);
-      tr.appendChild(td);
+      stTd.appendChild(btn);
+      tr.appendChild(stTd);
 
       tbody.appendChild(tr);
     });
@@ -163,18 +220,19 @@
     var sel = $('filterDate');
     var current = sel.value;
     var seen = {};
-    var opts = ['<option value="">수령일 전체</option>'];
+    var opts = ['<option value="">날짜 전체</option>'];
 
-    (CONFIG.pickupDates || []).forEach(function (d) {
-      seen[d.date] = true;
-      opts.push('<option value="' + d.date + '">' + d.label + '</option>');
-    });
-    orders.forEach(function (o) {
-      if (o.pickupDate && !seen[o.pickupDate]) {
-        seen[o.pickupDate] = true;
-        opts.push('<option value="' + o.pickupDate + '">' + o.pickupDate + '</option>');
-      }
-    });
+    var add = function (date, label) {
+      if (!date || seen[date]) return;
+      seen[date] = true;
+      var d = document.createElement('div');
+      d.textContent = label || date;
+      opts.push('<option value="' + date + '">' + d.innerHTML + '</option>');
+    };
+
+    ((CONFIG.pickup && CONFIG.pickup.dates) || []).forEach(function (d) { add(d.date, d.label); });
+    ((CONFIG.delivery && CONFIG.delivery.dates) || []).forEach(function (d) { add(d.date, d.label); });
+    orders.forEach(function (o) { add(o.pickupDate, o.pickupDateLabel); });
 
     sel.innerHTML = opts.join('');
     sel.value = current;
@@ -191,16 +249,20 @@
   /* ---------- 엑셀(CSV) 저장 ---------- */
 
   function toCsv() {
-    var head = ['예약번호', '접수일시', '예약자', '연락처', '수령일', '수령시간',
-                '주문내역', '수량', '금액', '요청사항', '상태'];
+    var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처',
+                '받는분', '받는분연락처', '배송지주소', '수령일', '수령시간',
+                '주문내역', '수량', '상품금액', '배송비', '합계', '요청사항', '상태'];
     var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
 
     var lines = [head.map(esc).join(',')];
     visibleOrders().forEach(function (o) {
       lines.push([
-        o.code, o.createdAt, o.name, o.phone,
+        o.code, o.createdAt, o.methodLabel || ((o.method === 'delivery') ? '택배' : '픽업'),
+        o.name, o.phone, o.receiverName, o.receiverPhone, o.address,
         o.pickupDateLabel || o.pickupDate, o.pickupTime,
-        o.itemsText, o.totalCount, o.totalPrice, o.memo, o.status || '대기',
+        o.itemsText, o.totalCount, o.itemsPrice,
+        (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
+        o.totalPrice, o.memo, labelOf(o),
       ].map(esc).join(','));
     });
 
@@ -212,7 +274,7 @@
     var blob = new Blob([toCsv()], { type: 'text/csv;charset=utf-8;' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = '추석선물세트_예약목록_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = '호핀치_추석예약_' + new Date().toISOString().slice(0, 10) + '.csv';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -258,13 +320,13 @@
     $('unlockBtn').addEventListener('click', unlock);
     $('key').addEventListener('keydown', function (e) { if (e.key === 'Enter') unlock(); });
 
-    $('search').addEventListener('input', function () { renderStats(); renderRows(); });
-    $('filterDate').addEventListener('change', function () { renderStats(); renderRows(); });
-    $('filterStatus').addEventListener('change', function () { renderStats(); renderRows(); });
+    ['search', 'filterMethod', 'filterDate', 'filterStatus'].forEach(function (id) {
+      $(id).addEventListener('input', function () { renderStats(); renderRows(); });
+      $(id).addEventListener('change', function () { renderStats(); renderRows(); });
+    });
     $('reloadBtn').addEventListener('click', load);
     $('csvBtn').addEventListener('click', downloadCsv);
 
-    // 같은 브라우저 탭에서는 비밀번호를 다시 입력하지 않도록
     var saved = '';
     try { saved = sessionStorage.getItem('chuseok-admin-key') || ''; } catch (e) {}
     if (saved || !CONFIG.sheetUrl) {
