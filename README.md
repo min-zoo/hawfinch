@@ -141,13 +141,39 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 
 ---
 
+## 디자인
+
+흰 여백을 넉넉히 쓰고, 연둣빛을 기본으로 하늘색을 포인트로 얹은
+차분한 느낌입니다. 글씨는 **Pretendard**, 선택 버튼과 상태 표시는
+동글동글한 알약 모양입니다.
+
+색을 바꾸고 싶으면 `assets/style.css` 맨 위 `:root` 부분의 값만
+고치면 전체가 한 번에 바뀝니다.
+
+| 이름 | 색 | 쓰이는 곳 |
+| --- | --- | --- |
+| `--green` | `#b9d46f` | 선택된 버튼, 신청 버튼, 준비완료 표시 |
+| `--green-soft` | `#edf3dc` | 안내 상자 배경 |
+| `--green-text` | `#5f7c2a` | 가격, 강조 글씨 |
+| `--blue` / `--blue-soft` | `#a5d8f3` / `#e6f4fc` | 예약번호, 준비대기 표시 |
+| `--ink` / `--ink-soft` | `#5c5c5c` / `#737373` | 본문 · 보조 글씨 |
+
+글씨 색은 흰 바탕에서 읽기 힘들지 않도록 명도 대비를 맞춰 두었으니,
+색을 바꾸실 때는 너무 연한 회색은 피해 주세요.
+
+Pretendard 글꼴은 jsDelivr CDN에서 불러옵니다. 혹시 불러오지 못하면
+윈도우는 맑은 고딕, 맥은 애플 SD 산돌고딕네오로 자동 대체됩니다.
+
+---
+
 ## 파일 구성
 
 ```
 index.html            손님용 예약 페이지
 admin.html            직원용 예약 목록 페이지
 assets/config.js      ★ 매장 정보·상품·날짜 설정 (여기만 고치면 됩니다)
-assets/style.css      디자인
+assets/style.css      디자인 (색은 맨 위 :root 에서 한 번에)
+assets/deco.svg       새·나무 일러스트
 assets/app.js         손님 페이지 동작
 assets/admin.js       직원 페이지 동작
 apps-script/Code.gs   구글 시트에 붙여넣을 저장 코드

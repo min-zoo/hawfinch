@@ -29,15 +29,39 @@
 
   /* ---------- 화면 그리기 ---------- */
 
+  /* '2026-09-20' → '9월 20일' */
+  function korDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? Number(m[2]) + '월 ' + Number(m[3]) + '일' : String(iso || '');
+  }
+
   function renderShop() {
     var s = CONFIG.shop || {};
     document.title = (s.name ? s.name + ' · ' : '') + '추석 디저트 선물세트 예약';
-    $('heroSub').textContent = s.name ? s.name + ' 사전 예약' : '사전 예약';
     if (s.notice) $('noteNotice').textContent = s.notice;
 
     if (CONFIG.closeDate) {
       $('noteClose').textContent =
         '예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지';
+    }
+
+    /* 머리말의 안내 줄 (레퍼런스 달력의 영업시간 표기와 같은 자리) */
+    var meta = $('heroMeta');
+    if (meta) {
+      var lines = [];
+      if (s.name) lines.push(s.name + ' 사전 예약');
+      if (CONFIG.closeDate) lines.push('예약 마감  ' + korDate(CONFIG.closeDate) + ' 까지');
+      var days = CONFIG.pickupDates || [];
+      if (days.length) {
+        lines.push('픽업 기간  ' + korDate(days[0].date) +
+                   (days.length > 1 ? ' ~ ' + korDate(days[days.length - 1].date) : ''));
+      }
+      meta.innerHTML = '';
+      lines.forEach(function (t) {
+        var span = document.createElement('span');
+        span.textContent = t;
+        meta.appendChild(span);
+      });
     }
 
     var bits = [];
