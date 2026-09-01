@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>예약 목록 (매장용)</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <p class="hero__eyebrow">STAFF ONLY</p>
+  <h1 class="hero__title">추석 선물세트 예약 목록</h1>
+  <p class="hero__sub">매장 확인용 화면입니다</p>
+</header>
+
+<main class="wrap wrap--wide">
+
+  <!-- 비밀번호 입력 -->
+  <section class="section" id="lockView">
+    <div class="card field">
+      <label class="field__label" for="key">매장 비밀번호</label>
+      <input class="input" type="password" id="key" autocomplete="current-password"
+             placeholder="비밀번호를 입력하세요">
+      <p class="error" id="keyErr" hidden></p>
+      <button class="btn" type="button" id="unlockBtn">예약 목록 열기</button>
+    </div>
+    <div class="note">
+      이 화면은 직원용입니다. 손님에게는 <strong>index.html</strong> 주소만 알려주세요.
+    </div>
+  </section>
+
+  <!-- 예약 목록 -->
+  <section id="dataView" hidden>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="admin-bar">
+      <input class="input" type="search" id="search" placeholder="이름 · 연락처 · 예약번호 검색">
+      <select class="select" id="filterDate"><option value="">수령일 전체</option></select>
+      <select class="select" id="filterStatus">
+        <option value="">상태 전체</option>
+        <option value="대기">준비 대기</option>
+        <option value="완료">준비 완료</option>
+      </select>
+      <button class="btn btn--ghost" type="button" id="reloadBtn">새로고침</button>
+      <button class="btn btn--ghost" type="button" id="csvBtn">엑셀로 저장</button>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>예약번호</th>
+            <th>접수일</th>
+            <th>예약자</th>
+            <th>연락처</th>
+            <th>수령일시</th>
+            <th>주문내역</th>
+            <th>금액</th>
+            <th>요청사항</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" hidden>조건에 맞는 예약이 없습니다.</div>
+    </div>
+
+    <p class="footer" id="lastSync"></p>
+  </section>
+
+</main>
+
+<script src="assets/config.js"></script>
+<script src="assets/admin.js"></script>
+</body>
+</html>
