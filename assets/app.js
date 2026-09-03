@@ -164,7 +164,8 @@
     if (c.enabled === false) {
       return contact ? '예약 변경·취소 문의 — ' + contact : '예약 변경·취소는 매장으로 문의해 주세요.';
     }
-    return '변경·취소는 예약 확인 화면에서 ' + HF.changeRuleText(mode) + ' 직접 하실 수 있습니다. 세트·수량 변경은 입금 전에 취소하고 다시 예약해 주세요.';
+    var what = mode === 'pickup' ? '수령날짜 및 시간 변경·취소는' : '받는 분·배송지 변경 및 취소는';
+    return what + ' 예약 확인 화면에서 ' + HF.changeRuleText(mode) + ' 직접 하실 수 있습니다. 세트·수량 변경은 입금 전에 취소하고 다시 예약해 주세요.';
   }
 
   function renderNote() {
