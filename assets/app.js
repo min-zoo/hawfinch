@@ -79,7 +79,8 @@
 
     var meta = $('heroMeta');
     var lines = [];
-    if (s.name) lines.push(s.name + ' 사전 예약');
+    /* 매장 이름은 맨 위 큰 제목에 이미 들어가 있어 여기서는 빼둡니다. */
+    lines.push('추석 사전예약');
     if (CONFIG.openDate && CONFIG.closeDate) {
       lines.push('예약 기간  ' + korDate(CONFIG.openDate) + ' ~ ' + korDate(CONFIG.closeDate));
     } else if (CONFIG.closeDate) {
