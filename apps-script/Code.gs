@@ -37,6 +37,7 @@ var HEADERS = [
   '수령일', '수령일표시', '수령시간',
   '주문내역', '상품별수량', '수량', '상품금액', '배송비', '합계',
   '현금영수증', '현금영수증발행', '요청사항', '개인정보동의', '상태',
+  '취소일시', '취소사유',
 ];
 
 /* 열 위치는 항상 이름으로 찾습니다. 번호를 적어두면 열이 하나 늘어날 때마다
@@ -159,7 +160,7 @@ function createOrder(body) {
     var sheet = getSheet();
     guardFlood(sheet, phone, parts.join(', '));
     guardStock(sheet, body.itemCounts, body.stockLimits);
-    var code = nextCode(sheet, body.codeStart);
+    var code = nextCode(sheet, body.codeStart, body.codePrefix);
     var row = [];
     row[col('예약번호')]      = code;
     row[col('접수일시')]      = new Date();
@@ -323,6 +324,8 @@ function updateStatus(body) {
   var hasReceipt = body.receiptIssued !== undefined && body.receiptIssued !== null;
   if (!hasStatus && !hasReceipt) throw new Error('바꿀 내용이 없습니다.');
 
+  var reason = trim(body.cancelReason).slice(0, 200);
+
   var status = trim(body.status);
   if (hasStatus && ALLOWED_STATUS.indexOf(status) === -1) {
     throw new Error('알 수 없는 상태입니다: ' + status);
@@ -338,6 +341,17 @@ function updateStatus(body) {
     var row = i + 2;
     if (hasStatus) {
       sheet.getRange(row, col('상태') + 1).setValue(status);
+
+      /* 취소로 바꾸면 언제·왜 취소했는지 남깁니다.
+         취소를 되돌리면 두 칸을 비워 기록이 남지 않게 합니다. */
+      if (status === '취소') {
+        sheet.getRange(row, col('취소일시') + 1)
+             .setValue(Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd HH:mm'));
+        sheet.getRange(row, col('취소사유') + 1).setValue(reason);
+      } else {
+        sheet.getRange(row, col('취소일시') + 1).setValue('');
+        sheet.getRange(row, col('취소사유') + 1).setValue('');
+      }
     }
     if (hasReceipt) {
       sheet.getRange(row, col('현금영수증발행') + 1)
@@ -386,6 +400,8 @@ function readOrders() {
       memo:            String(g(r, '요청사항')),
       agreed:          String(g(r, '개인정보동의')),
       status:          String(g(r, '상태') || '대기'),
+      canceledAt:      String(g(r, '취소일시') || ''),
+      cancelReason:    String(g(r, '취소사유') || ''),
     };
   });
 }
@@ -436,19 +452,24 @@ function syncHeaders(sheet) {
   sheet.setFrozenRows(1);
 }
 
+/* 예약번호 앞에 붙는 기본 글자. 화면(config.js 의 codePrefix)이 보내오면
+   그 값을 쓰므로, 앞글자를 바꿔도 이 코드를 다시 배포할 필요는 없습니다. */
+var CODE_PREFIX = 'HFC';
+
 /**
- * 예약번호를 만듭니다. 기본은 CS-0001 부터이고, 화면(config.js 의
+ * 예약번호를 만듭니다. 기본은 HFC-0001 부터이고, 화면(config.js 의
  * codeStart)이 시작 번호를 보내면 그 번호부터 시작합니다.
  *
  * 이미 쓰인 번호 중 가장 큰 값 다음을 쓰므로, 시트에서 줄을 지워도
  * 번호가 겹치지 않습니다. (줄 개수로 세면 지운 뒤 중복됩니다)
+ * 앞글자가 예전 것(CS-)이어도 숫자만 보고 이어붙이므로 겹치지 않습니다.
  */
-function nextCode(sheet, start) {
+function nextCode(sheet, start, prefix) {
   var last = sheet.getLastRow();
   var max = 0;
   if (last >= 2) {
     sheet.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
-      var m = /^CS-(\d+)$/.exec(String(r[0]).trim());   // 예약번호는 항상 첫 열
+      var m = /^[A-Z]+-(\d+)$/.exec(String(r[0]).trim());   // 예약번호는 항상 첫 열
       if (m) max = Math.max(max, Number(m[1]));
     });
   }
@@ -456,8 +477,11 @@ function nextCode(sheet, start) {
   var from = Math.floor(Number(start));
   if (!(from >= 1 && from <= 999999)) from = 1;      // 이상한 값이 오면 무시
 
+  var head = String(prefix || '').trim().toUpperCase();
+  if (!/^[A-Z]{1,6}$/.test(head)) head = CODE_PREFIX;   // 이상한 값이 오면 무시
+
   var n = Math.max(max + 1, from);
-  return 'CS-' + ('0000' + n).slice(-4);
+  return head + '-' + ('0000' + n).slice(-4);
 }
 
 /**

@@ -43,6 +43,14 @@
     return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
 
+  /* 지금 시각. 시트에 적히는 취소일시와 같은 모양으로 맞춥니다. */
+  function fmtNow() {
+    var d = new Date();
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
   /* ---------- 서버 통신 ---------- */
 
   function demoOrders() {
@@ -67,7 +75,9 @@
   }
 
   var saveReceipt = function (code, issued) { return save(code, { receiptIssued: issued }); };
-  var saveStatus  = function (code, status) { return save(code, { status: status }); };
+  var saveStatus  = function (code, status, reason) {
+    return save(code, { status: status, cancelReason: reason || '' });
+  };
 
   function save(code, patch) {
     if (!CONFIG.sheetUrl) {
@@ -348,10 +358,21 @@
       vd.title = isVoid(o) ? '취소를 취소하고 대기 상태로' : '이 예약을 취소 처리';
       vd.addEventListener('click', function () {
         var next = isVoid(o) ? '대기' : '취소';
-        if (next === '취소' && !confirm(o.code + ' 예약을 취소 처리할까요?\n기록은 남고 집계에서만 빠집니다.')) return;
+        var reason = '';
+        if (next === '취소') {
+          /* 왜 취소했는지 남겨두면 나중에 손님이 물어보실 때 답할 수 있습니다.
+             [취소] 를 누르면 취소한 날짜와 시각은 자동으로 기록됩니다. */
+          var typed = prompt(o.code + ' 예약을 취소 처리합니다.\n취소 사유를 적어주세요. (예: 손님 요청, 재료 소진)', '손님 요청');
+          if (typed === null) return;                 // [취소] 를 누르면 그대로 둡니다
+          reason = typed.trim().slice(0, 200);
+        } else if (!confirm(o.code + ' 예약의 취소를 되돌릴까요?\n취소한 날짜와 사유는 지워집니다.')) {
+          return;
+        }
         vd.disabled = true;
-        saveStatus(o.code, next).then(function () {
+        saveStatus(o.code, next, reason).then(function () {
           o.status = next;
+          o.canceledAt = next === '취소' ? fmtNow() : '';
+          o.cancelReason = next === '취소' ? reason : '';
           renderStats();
           renderRows();
           renderPrep();
@@ -361,6 +382,14 @@
         });
       });
       stTd.appendChild(vd);
+
+      /* 언제·왜 취소했는지 상태 칸 아래에 작게 적어둡니다. */
+      if (isVoid(o) && (o.canceledAt || o.cancelReason)) {
+        var vnote = document.createElement('div');
+        vnote.className = 'void-note';
+        vnote.textContent = [o.canceledAt, o.cancelReason].filter(Boolean).join(' · ');
+        stTd.appendChild(vnote);
+      }
 
       tr.appendChild(stTd);
 
@@ -420,7 +449,8 @@
     var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처', '입금자명',
                 '받는분', '받는분연락처', '배송지주소', '수령일', '수령시간',
                 '주문내역', '수량', '상품금액', '배송비', '합계',
-                '현금영수증', '현금영수증발행', '요청사항', '개인정보동의', '상태'];
+                '현금영수증', '현금영수증발행', '요청사항', '개인정보동의', '상태',
+                '취소일시', '취소사유'];
     var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
 
     var lines = [head.map(esc).join(',')];
@@ -433,6 +463,7 @@
         (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
         o.totalPrice, o.cashReceipt, o.receiptIssued ? '발행' : '',
         o.memo, o.agreed || '', statusOf(o),
+        o.canceledAt || '', o.cancelReason || '',
       ].map(esc).join(','));
     });
 

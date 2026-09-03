@@ -508,6 +508,12 @@ td.nowrap .cell-sub { white-space: nowrap; }
 }
 .void-btn:hover { border-color: var(--danger); color: var(--danger); }
 
+/* 취소한 날짜와 사유 */
+.void-note {
+  margin-top: 6px; font-size: 12px; line-height: 1.5;
+  color: var(--ink-faint); white-space: normal; word-break: keep-all;
+}
+
 /* 취소된 줄 */
 tbody tr.is-void td { color: var(--ink-faint); }
 tbody tr.is-void td:first-child { text-decoration: line-through; }
@@ -581,4 +587,25 @@ tbody tr.is-void td:first-child { text-decoration: line-through; }
   .product { padding: 18px 16px; gap: 13px; }
   .product__thumb { width: 76px; height: 76px; border-radius: 12px; }
   .field { padding: 18px 16px; }
+}
+
+/* ── 예약 내용 그림 저장 (아이폰에서 길게 눌러 저장) ────────────────── */
+.shot {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(30, 36, 30, .72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow: auto;
+}
+.shot__inner {
+  width: 100%; max-width: 420px; text-align: center;
+}
+.shot__hint {
+  margin: 0 0 12px; color: #fff; font-size: 14px; line-height: 1.6;
+}
+.shot__img {
+  width: 100%; height: auto; border-radius: 14px; background: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+}
+.shot__close {
+  width: 100%; margin-top: 14px; padding: 13px; background: #fff;
 }

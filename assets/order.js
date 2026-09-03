@@ -8,7 +8,7 @@
   /* 손님에게는 매장 내부 용어 대신 지금 상황을 그대로 알려줍니다. */
   var STATE = {
     pickup: {
-      '대기':     ['예약이 접수되었습니다', '수령일에 매장으로 오시면 됩니다.'],
+      '대기':     ['입금을 기다리고 있습니다', '입금이 확인되면 준비해 두겠습니다.'],
       '입금확인': ['입금이 확인되었습니다', '수령일에 매장으로 오시면 됩니다.'],
       '현장결제': ['예약이 접수되었습니다', '받으러 오실 때 매장에서 결제해 주시면 됩니다.'],
       '완료':     ['준비 완료', '매장에서 받아가실 수 있습니다.'],
@@ -24,6 +24,11 @@
   };
 
 
+
+  /* 예약번호 예시 (config.js 의 codePrefix 를 그대로 씁니다) */
+  function codeSample() {
+    return (CONFIG.codePrefix || 'HFC') + '-0100';
+  }
 
   function renderShop() {
     var s = CONFIG.shop || {};
@@ -49,7 +54,7 @@
 
     var contact = contactLine();
     $('noteBox').innerHTML = '<strong>안내</strong><ul>' +
-      '<li>예약하실 때 받으신 예약번호(CS-0001 형태)가 필요합니다.</li>' +
+      '<li>예약하실 때 받으신 예약번호(' + escapeHtml(codeSample()) + ' 형태)가 필요합니다.</li>' +
       '<li>' + (contact
         ? '예약번호를 잊으셨거나 변경·취소가 필요하시면 — ' + escapeHtml(contact)
         : '예약번호를 잊으셨으면 매장으로 문의해 주세요.') + '</li></ul>';
@@ -150,7 +155,7 @@
     var total = document.createElement('div');
     total.className = 'summary__row summary__row--total';
     var tl = document.createElement('span');
-    tl.textContent = delivery ? '합계' : '결제 예정';
+    tl.textContent = HF.prepay(delivery ? 'delivery' : 'pickup') ? '입금하실 금액' : '결제 예정';
     var tv = document.createElement('span');
     tv.textContent = won(o.totalPrice);
     total.append(tl, tv);
@@ -158,9 +163,9 @@
 
     box.appendChild(body);
 
-    /* 입금 전 택배 주문이면 계좌를 다시 보여줍니다 */
-    if (delivery && (o.status === '대기' || !o.status)) {
-      var bank = (CONFIG.delivery && CONFIG.delivery.bank) || {};
+    /* 아직 입금 전이면 계좌를 다시 보여줍니다 (픽업·택배 모두) */
+    if (HF.prepay(delivery ? 'delivery' : 'pickup') && (o.status === '대기' || !o.status)) {
+      var bank = HF.bank();
       if (bank.bankName && bank.account) {
         var pay = document.createElement('div');
         pay.className = 'paybox';

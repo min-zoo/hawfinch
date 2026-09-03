@@ -36,8 +36,22 @@ var HF = (function () {
     return d.innerHTML;
   }
 
+  /* 미리 입금을 받는 방법인지 (config.js 의 pickup.prepay / delivery.prepay) */
+  function prepay(method) {
+    var c = (typeof CONFIG !== 'undefined' && CONFIG[method]) || null;
+    return !!(c && c.prepay);
+  }
+
+  /* 입금 계좌. 픽업·택배가 같은 계좌를 쓰므로 한 곳에서 읽습니다.
+     예전 설정처럼 delivery 안에 들어 있어도 그대로 동작합니다. */
+  function bank() {
+    if (typeof CONFIG === 'undefined') return {};
+    return CONFIG.bank || (CONFIG.delivery && CONFIG.delivery.bank) || {};
+  }
+
   return {
     $: $, won: won, formatPhone: formatPhone,
     validPhone: validPhone, contactLine: contactLine, escapeHtml: escapeHtml,
+    prepay: prepay, bank: bank,
   };
 })();

@@ -14,10 +14,18 @@
 
   var METHODS = {
     pickup:   { label: '매장 픽업', icon: '🏠',
-                desc: '매장에 직접 오셔서 받아가시고, 결제도 그때 하시면 됩니다.' },
+                desc: '매장에 직접 오셔서 받아가십니다. 입금 확인 후 준비해 둡니다.',
+                descOnsite: '매장에 직접 오셔서 받아가시고, 결제도 그때 하시면 됩니다.' },
     delivery: { label: '택배 발송', icon: '📦',
-                desc: '원하는 주소로 보내드립니다. 입금 확인 후 발송됩니다.' },
+                desc: '원하는 주소로 보내드립니다. 입금 확인 후 발송됩니다.',
+                descOnsite: '원하는 주소로 보내드립니다.' },
   };
+
+  /* 선입금이냐 현장 결제냐에 따라 설명이 달라집니다. */
+  function methodDesc(key) {
+    var m = METHODS[key];
+    return HF.prepay(key) ? m.desc : (m.descOnsite || m.desc);
+  }
 
   /* ---------- 날짜 도우미 ---------- */
 
@@ -58,6 +66,9 @@
   }
 
   var enabled = function (key) { return !!(CONFIG[key] && CONFIG[key].enabled); };
+
+  /* 미리 입금을 받는 방법인지. config.js 의 pickup.prepay / delivery.prepay 로 정합니다. */
+  function isPrepay(m) { return HF.prepay(m || mode); }
 
 
   /* ---------- 머리말 · 안내 ---------- */
@@ -198,7 +209,7 @@
       name.textContent = m.label;
       var desc = document.createElement('span');
       desc.className = 'method__desc';
-      desc.textContent = m.desc;
+      desc.textContent = methodDesc(key);
       body.append(name, desc);
 
       var arrow = document.createElement('span');
@@ -232,6 +243,7 @@
       ? '픽업하실 때 예약을 확인하는 데 사용됩니다.'
       : '주문 확인에 사용되며, 문제가 있을 때만 연락드립니다.';
 
+    $('depositorField').hidden = !isPrepay(m);
     $('memoField').hidden = !CONFIG.showMemo;
     $('cashField').hidden = !cashOn();
 
@@ -573,7 +585,8 @@
   function cashOn() {
     var c = (CONFIG.delivery && CONFIG.delivery.cashReceipt) || {};
     if (!c.enabled) return false;
-    return mode === 'delivery' || (mode === 'pickup' && c.forPickup);
+    if (!isPrepay()) return false;                 // 현장 결제면 매장에서 처리합니다
+    return mode === 'delivery' || !!c.forPickup;
   }
 
   var cashType = function () { return picked('cashType') || CASH_TYPES[0]; };
@@ -727,7 +740,8 @@
       method:      mode,
       methodLabel: METHODS[mode].label,
       status:      initial,          // 새 예약이 처음 받는 상태
-      codeStart:   CONFIG.codeStart,  // 예약번호 시작 값
+      codeStart:   CONFIG.codeStart,   // 예약번호 시작 값
+      codePrefix:  CONFIG.codePrefix,  // 예약번호 앞글자 (HFC-0100)
       trap:        $('website').value,          // 사람은 비워두는 칸
       elapsed:     Date.now() - openedAt,       // 작성에 걸린 시간(ms)
       shop:        (CONFIG.shop && CONFIG.shop.name) || '',
@@ -755,12 +769,13 @@
       o.cashReceipt = cashType() + ' ' + $('cashNo').value.trim();
     }
 
+    if (isPrepay()) o.depositor = $('depositor').value.trim() || o.name;
+
     if (mode === 'pickup') {
       o.pickupDate = picked('pickupDate');
       o.pickupDateLabel = labelOf(CONFIG.pickup.dates, o.pickupDate);
       o.pickupTime = picked('pickupTime');
     } else {
-      o.depositor = $('depositor').value.trim() || o.name;
       o.receiverName = $('receiverName').value.trim();
       o.receiverPhone = $('receiverPhone').value.trim();
       o.address = ['[' + $('postcode').value.trim() + ']',
@@ -823,6 +838,234 @@
     } catch (e) { return false; }
   }
 
+  /* ---------- 예약 내용을 이미지로 저장 ----------
+     손님이 예약번호를 잊어버리지 않도록, 완료 화면을 그림 한 장으로
+     만들어 앨범에 저장할 수 있게 합니다. 화면을 그대로 찍는 대신 필요한
+     내용만 직접 그리므로, 다른 회사 프로그램을 불러오지 않아도 됩니다. */
+
+  var CARD_FONT = 'Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
+
+  /* 글자가 칸을 넘어가면 줄을 나눕니다. 한글은 단어 사이가 없어도
+     끊어야 하므로, 공백이 없으면 글자 단위로 나눕니다. */
+  function wrapText(ctx, text, maxWidth) {
+    var out = [];
+    String(text == null ? '' : text).split('\n').forEach(function (para) {
+      var line = '';
+      para.split(/(\s+)/).forEach(function (piece) {
+        if (!piece) return;
+        if (ctx.measureText(line + piece).width <= maxWidth) { line += piece; return; }
+        if (line.trim()) { out.push(line.trim()); line = ''; }
+        if (ctx.measureText(piece).width <= maxWidth) { line = piece; return; }
+        for (var i = 0; i < piece.length; i++) {
+          if (ctx.measureText(line + piece[i]).width > maxWidth) { out.push(line); line = ''; }
+          line += piece[i];
+        }
+      });
+      out.push(line.trim());
+    });
+    return out.filter(function (t, i) { return t || i === 0; });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  /* 완료 화면의 내용을 그림으로 그립니다. rows 는 요약에 쓴 것과 같습니다. */
+  function drawCard(code, rows, payLines) {
+    var W = 720, PAD = 48, INNER = W - PAD * 2;
+    var scale = Math.min(window.devicePixelRatio || 1, 3);
+
+    /* 높이를 먼저 재기 위해 임시 캔버스에 글자 크기만 계산합니다. */
+    var probe = document.createElement('canvas').getContext('2d');
+    var plan = [];
+    var y = 0;
+
+    y += 56;                                     // 위 여백
+    plan.push({ t: 'shop', y: y });  y += 34;    // 매장 이름
+    plan.push({ t: 'title', y: y }); y += 54;    // 예약이 접수되었습니다
+    y += 14;
+    plan.push({ t: 'code', y: y });  y += 108;   // 예약번호 상자
+    y += 12;
+
+    rows.forEach(function (pair) {
+      probe.font = '400 22px ' + CARD_FONT;
+      var lines = wrapText(probe, pair[1], INNER - 150);
+      plan.push({ t: 'row', y: y, label: pair[0], lines: lines });
+      y += Math.max(1, lines.length) * 32 + 12;
+    });
+
+    if (payLines.length) {
+      y += 10;
+      plan.push({ t: 'payTop', y: y });
+      y += 22;
+      payLines.forEach(function (line) {
+        plan.push({ t: 'pay', y: y, text: line.text, big: !!line.big });
+        y += line.big ? 40 : 32;
+      });
+      y += 10;
+    }
+
+    y += 16;
+    plan.push({ t: 'foot', y: y });
+    y += 30 + 40;
+
+    var H = y;
+    var cv = document.createElement('canvas');
+    cv.width = W * scale;
+    cv.height = H * scale;
+    var ctx = cv.getContext('2d');
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    /* 위쪽에 연둣빛 띠를 둘러 매장 화면과 같은 느낌을 냅니다. */
+    ctx.fillStyle = '#eaf3e2';
+    ctx.fillRect(0, 0, W, 10);
+
+    var shop = (CONFIG.shop && CONFIG.shop.name) || '';
+    var contact = contactLine();
+
+    plan.forEach(function (it) {
+      if (it.t === 'shop') {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#8a9384';
+        ctx.font = '600 20px ' + CARD_FONT;
+        ctx.fillText(shop, W / 2, it.y + 20);
+      } else if (it.t === 'title') {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#2f3630';
+        ctx.font = '700 30px ' + CARD_FONT;
+        ctx.fillText('예약이 접수되었습니다', W / 2, it.y + 30);
+      } else if (it.t === 'code') {
+        ctx.fillStyle = '#f2f7ec';
+        roundRect(ctx, PAD, it.y, INNER, 92, 18);
+        ctx.fill();
+        ctx.strokeStyle = '#d7e6c8';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#7d8a72';
+        ctx.font = '600 18px ' + CARD_FONT;
+        ctx.fillText('예약번호', W / 2, it.y + 30);
+        ctx.fillStyle = '#2f3630';
+        ctx.font = '700 40px ' + CARD_FONT;
+        ctx.fillText(code, W / 2, it.y + 74);
+      } else if (it.t === 'row') {
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#8a9384';
+        ctx.font = '500 22px ' + CARD_FONT;
+        ctx.fillText(it.label, PAD, it.y + 22);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#2f3630';
+        ctx.font = '400 22px ' + CARD_FONT;
+        it.lines.forEach(function (line, i) {
+          ctx.fillText(line, W - PAD, it.y + 22 + i * 32);
+        });
+      } else if (it.t === 'payTop') {
+        ctx.strokeStyle = '#e6e9e2';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(PAD, it.y);
+        ctx.lineTo(W - PAD, it.y);
+        ctx.stroke();
+      } else if (it.t === 'pay') {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = it.big ? '#2f3630' : '#6d766a';
+        ctx.font = (it.big ? '700 26px ' : '400 22px ') + CARD_FONT;
+        ctx.fillText(it.text, W / 2, it.y + (it.big ? 28 : 22));
+      } else if (it.t === 'foot') {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#a3aa9d';
+        ctx.font = '400 18px ' + CARD_FONT;
+        var line = [shop, contact].filter(Boolean).join('  ·  ');
+        ctx.fillText(line, W / 2, it.y + 18);
+      }
+    });
+
+    return cv;
+  }
+
+  /* 아이폰 사파리는 내려받기가 막혀 있어, 그림을 띄우고 길게 눌러
+     저장하시도록 안내합니다. 그 밖의 환경에서는 바로 내려받습니다. */
+  var isIOS = function () {
+    return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  function showImageSheet(url, code) {
+    var back = document.createElement('div');
+    back.className = 'shot';
+    var inner = document.createElement('div');
+    inner.className = 'shot__inner';
+
+    var hint = document.createElement('p');
+    hint.className = 'shot__hint';
+    hint.textContent = '그림을 길게 눌러 “사진에 추가”를 선택하세요.';
+
+    var img = document.createElement('img');
+    img.className = 'shot__img';
+    img.src = url;
+    img.alt = '예약번호 ' + code;
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn btn--ghost shot__close';
+    close.textContent = '닫기';
+    close.addEventListener('click', function () { back.remove(); });
+
+    inner.append(hint, img, close);
+    back.appendChild(inner);
+    back.addEventListener('click', function (e) { if (e.target === back) back.remove(); });
+    document.body.appendChild(back);
+  }
+
+  function saveCardImage(btn, code, rows, payLines) {
+    var done = function (msg) {
+      btn.textContent = msg;
+      btn.disabled = false;
+      setTimeout(function () { btn.textContent = '예약 내용 이미지로 저장'; }, 2500);
+    };
+
+    btn.disabled = true;
+    btn.textContent = '만드는 중입니다…';
+
+    var ready = (document.fonts && document.fonts.ready)
+      ? document.fonts.ready.catch(function () {})
+      : Promise.resolve();
+
+    ready.then(function () {
+      var cv;
+      try {
+        cv = drawCard(code, rows, payLines);
+      } catch (e) {
+        done('저장하지 못했습니다');
+        return;
+      }
+
+      var url = cv.toDataURL('image/png');
+      if (isIOS()) {
+        showImageSheet(url, code);
+        done('예약 내용 이미지로 저장');
+        return;
+      }
+
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = ((CONFIG.shop && CONFIG.shop.name) || '예약') + '_' + code + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      done('저장되었습니다');
+    });
+  }
+
   /* ---------- 완료 화면 ---------- */
 
   function showDone(order, code) {
@@ -838,9 +1081,12 @@
 
     var lead = document.createElement('p');
     lead.className = 'done__text';
-    lead.textContent = order.method === 'pickup'
+    var prepaid = isPrepay(order.method);
+    lead.textContent = !prepaid
       ? '아래 예약번호를 저장해 두시고, 수령일에 매장으로 오시면 됩니다.'
-      : '아래 계좌로 입금해 주시면 확인 후 발송해 드립니다.';
+      : (order.method === 'pickup'
+         ? '아래 계좌로 입금해 주시면 확인 후 준비해 두겠습니다.'
+         : '아래 계좌로 입금해 주시면 확인 후 발송해 드립니다.');
     box.appendChild(lead);
 
     var codeEl = document.createElement('div');
@@ -856,9 +1102,9 @@
       : '문의하실 때 이 번호를 알려주시면 빠릅니다.';
     box.appendChild(codeHint);
 
-    /* 택배: 입금 안내 */
-    if (order.method === 'delivery') {
-      var bank = (CONFIG.delivery && CONFIG.delivery.bank) || {};
+    /* 선입금으로 받는 방법: 입금 안내 */
+    if (prepaid) {
+      var bank = HF.bank();
       var pay = document.createElement('div');
       pay.className = 'paybox';
 
@@ -910,6 +1156,11 @@
         : '입금하실 금액 ' + won(order.totalPrice);
       pay.appendChild(amount);
 
+      var payHint = document.createElement('p');
+      payHint.className = 'paybox__sub';
+      payHint.textContent = '입금자명이 다르면 매장으로 알려주세요.';
+      pay.appendChild(payHint);
+
       box.appendChild(pay);
     }
 
@@ -924,6 +1175,9 @@
     if (order.method === 'pickup') {
       rows.push(['예약자', order.name]);
       rows.push(['연락처', order.phone]);
+      if (order.depositor && order.depositor !== order.name) {
+        rows.push(['입금자명', order.depositor]);
+      }
       rows.push(['수령일시', order.pickupDateLabel + ' ' + order.pickupTime]);
     } else {
       rows.push(['주문자', order.name]);
@@ -941,7 +1195,7 @@
       rows.push(['배송비', order.shippingFee === null ? '추후 안내'
                  : (order.shippingFee === 0 ? '무료' : won(order.shippingFee))]);
     }
-    rows.push([order.method === 'pickup' ? '결제예정' : '합계', won(order.totalPrice)]);
+    rows.push([prepaid ? '입금하실 금액' : '결제예정', won(order.totalPrice)]);
 
     rows.forEach(function (pair) {
       var row = document.createElement('div');
@@ -959,10 +1213,33 @@
     box.appendChild(recap);
     main.appendChild(box);
 
+    /* 예약번호를 앨범에 남겨두실 수 있게 그림으로 저장합니다. */
+    var payLines = [];
+    if (prepaid) {
+      var b = HF.bank();
+      if (b.bankName && b.account) {
+        payLines.push({ text: '아래 계좌로 입금해 주세요' });
+        payLines.push({ text: b.bankName + ' ' + b.account, big: true });
+        if (b.holder) payLines.push({ text: '예금주 ' + b.holder });
+      } else {
+        payLines.push({ text: '입금 계좌는 매장에서 안내드립니다.' });
+      }
+    }
+
+    var shot = document.createElement('button');
+    shot.type = 'button';
+    shot.className = 'btn btn--ghost';
+    shot.style.cssText = 'display:block;width:100%;margin-top:20px;padding:14px;text-align:center';
+    shot.textContent = '예약 내용 이미지로 저장';
+    shot.addEventListener('click', function () {
+      saveCardImage(shot, code, rows, payLines);
+    });
+    main.appendChild(shot);
+
     /* 예약번호를 잊어버려도 다시 확인할 수 있게 안내합니다. */
     var look = document.createElement('a');
     look.className = 'btn btn--ghost';
-    look.style.cssText = 'display:block;width:100%;margin-top:20px;padding:14px;text-align:center;text-decoration:none';
+    look.style.cssText = 'display:block;width:100%;margin-top:10px;padding:14px;text-align:center;text-decoration:none';
     look.href = 'order.html?code=' + encodeURIComponent(code);
     look.textContent = '예약 내용 다시 보기';
     main.appendChild(look);
