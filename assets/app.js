@@ -257,6 +257,9 @@
 
   /* ---------- 상품 ---------- */
 
+  /* 가격이 아직 정해지지 않은 세트는 담을 수 없습니다. */
+  var priceReady = function (p) { return typeof p.price === 'number' && p.price > 0; };
+
   function renderProducts() {
     var list = $('productList');
     list.innerHTML = '';
@@ -264,8 +267,9 @@
     (CONFIG.products || []).forEach(function (p) {
       qty[p.id] = 0;
 
+      var pending = !priceReady(p);
       var row = document.createElement('div');
-      row.className = 'product' + (p.soldOut ? ' product--out' : '');
+      row.className = 'product' + (p.soldOut || pending ? ' product--out' : '');
 
       var body = document.createElement('div');
       body.className = 'product__body';
@@ -275,6 +279,8 @@
       name.textContent = p.name;
       if (p.soldOut) {
         name.insertAdjacentHTML('beforeend', ' <span class="badge badge--out">품절</span>');
+      } else if (pending) {
+        name.insertAdjacentHTML('beforeend', ' <span class="badge badge--out">준비 중</span>');
       } else if (p.badge) {
         var b = document.createElement('span');
         b.className = 'badge';
@@ -289,15 +295,22 @@
         desc.textContent = p.desc;
         body.appendChild(desc);
       }
+      if (p.note) {
+        var note = document.createElement('p');
+        note.className = 'product__note';
+        note.textContent = p.note;
+        body.appendChild(note);
+      }
 
       var price = document.createElement('p');
       price.className = 'product__price';
-      price.textContent = won(p.price);
+      price.textContent = pending ? '가격 준비 중' : won(p.price);
+      if (pending) price.classList.add('product__price--pending');
       body.appendChild(price);
 
       row.appendChild(body);
 
-      if (!p.soldOut && !isLocked()) {
+      if (!p.soldOut && !pending && !isLocked()) {
         var ctrl = document.createElement('div');
         ctrl.className = 'qty';
 
@@ -341,7 +354,7 @@
 
   function chosenItems() {
     return (CONFIG.products || [])
-      .filter(function (p) { return qty[p.id] > 0; })
+      .filter(function (p) { return qty[p.id] > 0 && priceReady(p); })
       .map(function (p) {
         return { id: p.id, name: p.name, price: p.price, count: qty[p.id],
                  amount: p.price * qty[p.id] };
