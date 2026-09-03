@@ -73,7 +73,7 @@
 
   function renderShop() {
     var s = CONFIG.shop || {};
-    document.title = (s.name ? s.name + ' ' : '') + '추석 디저트 선물세트 예약';
+    document.title = (s.name ? s.name + ' ' : '') + '추석 선물세트 사전예약';
 
     var meta = $('heroMeta');
     var lines = [];
