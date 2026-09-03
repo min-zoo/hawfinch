@@ -53,7 +53,8 @@ function col(name) {
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
-    if (body.action === 'update') return json(updateStatus(body));
+    if (body.action === 'update')   return json(updateStatus(body));
+    if (body.action === 'customer') return json(customerEdit(body));
     return json(createOrder(body));
   } catch (err) {
     return json({ ok: false, error: String(err && err.message || err) });
@@ -360,6 +361,102 @@ function updateStatus(body) {
     return { ok: true };
   }
   throw new Error('해당 예약번호를 찾을 수 없습니다: ' + code);
+}
+
+
+/* ---------- 손님이 직접 변경·취소 ---------- */
+
+/* 손님이 직접 바꿀 수 있는 마지막 날을 셀 때의 기본값.
+   화면(config.js 의 customerChange.daysBefore / delivery.shipStart)이
+   값을 보내오면 그것을 쓰고, 없으면 여기 값을 씁니다. */
+var CUSTOMER_EDIT = { daysBefore: 3, shipStart: '2026-09-16' };
+var CUSTOMER_EDITABLE = ['대기', '입금확인'];   // 이 상태일 때만 손님이 손댈 수 있습니다
+
+/**
+ * 손님이 예약 확인 화면에서 자기 예약을 취소하거나(op: 'cancel')
+ * 수령일·시간 / 받는 분·주소를 바꿉니다(op: 'change').
+ * 예약번호 + 연락처가 맞아야 하고, 기한 안이어야 하며, 상태가 대기·입금확인이어야 합니다.
+ * 세트·수량은 바꿀 수 없습니다 (금액이 달라지므로).
+ */
+function customerEdit(body) {
+  var order = lookupOrder(body.code, body.phone);          // 본인 확인
+  var sheet = getSheet();
+  var rowNo = findRow(sheet, order.code);
+  if (!rowNo) throw new Error('예약을 찾을 수 없습니다.');
+
+  var status = trim(sheet.getRange(rowNo, col('상태') + 1).getValue()) || '대기';
+  if (status === '취소') throw new Error('이미 취소된 예약입니다.');
+  if (CUSTOMER_EDITABLE.indexOf(status) === -1) {
+    throw new Error('이미 처리가 끝난 예약은 바꿀 수 없습니다. 매장으로 문의해 주세요.');
+  }
+
+  /* 기한: 픽업은 시트의 수령일, 택배는 발송 시작일에서 daysBefore 만큼 앞 */
+  var days = Math.floor(Number(body.daysBefore));
+  if (!(days >= 0 && days <= 30)) days = CUSTOMER_EDIT.daysBefore;
+  var ref = order.method === 'delivery'
+    ? (/^\d{4}-\d{2}-\d{2}$/.test(trim(body.shipStart)) ? trim(body.shipStart) : CUSTOMER_EDIT.shipStart)
+    : order.pickupDate;
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ref || '');
+  if (m) {
+    var until = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - days);
+    var today = Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd');
+    if (today > Utilities.formatDate(until, tz(), 'yyyy-MM-dd')) {
+      throw new Error('변경·취소 가능 기한(' + Utilities.formatDate(until, tz(), 'M월 d일') + ')이 지났습니다. 매장으로 문의해 주세요.');
+    }
+  }
+
+  var stamp = Utilities.formatDate(new Date(), tz(), 'M/d HH:mm');
+  var set = function (name, v) { sheet.getRange(rowNo, col(name) + 1).setValue(v); };
+  var note = function (text) {
+    var cur = trim(sheet.getRange(rowNo, col('요청사항') + 1).getValue());
+    set('요청사항', (cur ? cur + '\n' : '') + '[' + stamp + ' 손님 ' + text + ']');
+  };
+
+  if (body.op === 'cancel') {
+    set('상태', '취소');
+    set('취소일시', Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd HH:mm'));
+    set('취소사유', '손님 직접 취소' + (status === '입금확인' ? ' (입금 완료 상태 · 환불 필요)' : ''));
+  } else if (body.op === 'change') {
+    if (order.method === 'pickup') {
+      var date = trim(body.pickupDate), time = trim(body.pickupTime).slice(0, 40);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !time) throw new Error('수령일과 시간을 골라주세요.');
+      var before = order.pickupDateLabel + ' ' + order.pickupTime;
+      set('수령일', date);
+      set('수령일표시', trim(body.pickupDateLabel).slice(0, 40) || date);
+      set('수령시간', time);
+      note('변경: 수령 ' + before + ' → ' + (trim(body.pickupDateLabel) || date) + ' ' + time);
+    } else {
+      var rn = trim(body.receiverName).slice(0, 30);
+      var rp = trim(body.receiverPhone);
+      var addr = trim(body.address).slice(0, 200);
+      if (!rn) throw new Error('받는 분 성함이 비어 있습니다.');
+      if (!isPhone(rp)) throw new Error('받는 분 연락처 형식이 올바르지 않습니다.');
+      if (!addr) throw new Error('배송지 주소가 비어 있습니다.');
+      var changed = [];
+      if (rn !== order.receiverName) changed.push('받는 분 ' + order.receiverName + ' → ' + rn);
+      if (onlyDigits(rp) !== onlyDigits(order.receiverPhone)) changed.push('받는 분 연락처 변경');
+      if (addr !== order.address) changed.push('배송지 ' + order.address + ' → ' + addr);
+      set('받는분', rn);
+      set('받는분연락처', rp);
+      set('배송지주소', addr);
+      note('변경: ' + (changed.join(' · ') || '내용 같음'));
+    }
+  } else {
+    throw new Error('알 수 없는 요청입니다.');
+  }
+
+  return { ok: true, order: lookupOrder(body.code, body.phone) };
+}
+
+/* 예약번호로 시트의 줄 번호를 찾습니다. 없으면 0. */
+function findRow(sheet, code) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  var codes = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = 0; i < codes.length; i++) {
+    if (String(codes[i][0]) === code) return i + 2;
+  }
+  return 0;
 }
 
 

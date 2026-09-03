@@ -49,9 +49,59 @@ var HF = (function () {
     return CONFIG.bank || (CONFIG.delivery && CONFIG.delivery.bank) || {};
   }
 
+  /* 2026-09-21 → '9월 21일' */
+  function korDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    return m ? Number(m[2]) + '월 ' + Number(m[3]) + '일' : String(iso || '');
+  }
+
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+           String(d.getMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getDate()).padStart(2, '0');
+  }
+
+  /* 손님이 직접 변경·취소할 수 있는 기준.
+     픽업은 수령일, 택배는 발송 시작일(delivery.shipStart)에서
+     customerChange.daysBefore 만큼 앞선 날까지만 됩니다.
+     { until: 'YYYY-MM-DD', days: 3, open: 아직 되는지 } 를 돌려주고,
+     기능이 꺼져 있거나 기준 날짜가 없으면 null 입니다. */
+  function changeLimit(method, pickupDate) {
+    var c = (typeof CONFIG !== 'undefined' && CONFIG.customerChange) || {};
+    if (c.enabled === false) return null;
+    var days = typeof c.daysBefore === 'number' ? c.daysBefore : 3;
+    var ref = method === 'delivery'
+      ? ((CONFIG.delivery && CONFIG.delivery.shipStart) || '')
+      : (pickupDate || '');
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ref));
+    if (!m) return null;
+    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    d.setDate(d.getDate() - days);
+    var until = d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+    return { until: until, days: days, ref: ref, open: todayIso() <= until };
+  }
+
+  /* 다음 우편번호 검색창을 엽니다. 스크립트를 못 불러왔으면 false. */
+  function openPostcode(onDone) {
+    if (!window.daum || !window.daum.Postcode) return false;
+    new window.daum.Postcode({
+      oncomplete: function (data) {
+        onDone(data.zonecode || '', data.roadAddress || data.jibunAddress || '');
+      },
+    }).open();
+    return true;
+  }
+
+  var hasPostcode = function () { return !!(window.daum && window.daum.Postcode); };
+
   return {
     $: $, won: won, formatPhone: formatPhone,
     validPhone: validPhone, contactLine: contactLine, escapeHtml: escapeHtml,
     prepay: prepay, bank: bank,
+    korDate: korDate, todayIso: todayIso, changeLimit: changeLimit,
+    openPostcode: openPostcode, hasPostcode: hasPostcode,
   };
 })();

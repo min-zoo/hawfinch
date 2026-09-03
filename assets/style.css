@@ -609,3 +609,14 @@ tbody tr.is-void td:first-child { text-decoration: line-through; }
 .shot__close {
   width: 100%; margin-top: 14px; padding: 13px; background: #fff;
 }
+
+/* ── 예약 확인 화면: 손님이 직접 변경·취소 ─────────────────────────── */
+.order-actions { padding: 0 20px 20px; }
+.order-actions__note { margin: 0 0 12px; font-size: 13px; line-height: 1.6; color: var(--ink-soft); }
+.order-actions__row { display: flex; gap: 10px; flex-wrap: wrap; }
+.order-actions__row .btn { flex: 1 1 140px; padding: 12px 14px; }
+.btn--danger { color: var(--danger); border-color: var(--danger); }
+.btn--danger:hover { background: #fff3f1; }
+.order-edit { padding: 6px 20px 20px; border-top: 1px solid var(--line); }
+.order-edit__title { margin: 14px 0; font-weight: 700; color: var(--ink); }
+.order-edit .order-actions__row { margin-top: 16px; }

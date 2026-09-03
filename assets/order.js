@@ -2,21 +2,24 @@
 (function () {
   'use strict';
 
-  var $ = HF.$, won = HF.won, formatPhone = HF.formatPhone,
-      contactLine = HF.contactLine, escapeHtml = HF.escapeHtml;
+  var $ = HF.$, won = HF.won, formatPhone = HF.formatPhone, validPhone = HF.validPhone,
+      contactLine = HF.contactLine, escapeHtml = HF.escapeHtml, korDate = HF.korDate;
+
+  var current = null;      // 지금 화면에 보이는 예약
+  var phoneUsed = '';      // 조회할 때 쓴 연락처 (변경·취소 때 다시 보냅니다)
 
   /* 손님에게는 매장 내부 용어 대신 지금 상황을 그대로 알려줍니다. */
   var STATE = {
     pickup: {
-      '대기':     ['입금을 기다리고 있습니다', '입금이 확인되면 준비해 두겠습니다.'],
+      '대기':     ['입금 대기 중입니다', '제품은 입금 확인 후 준비됩니다.'],
       '입금확인': ['입금이 확인되었습니다', '수령일에 매장으로 오시면 됩니다.'],
       '현장결제': ['예약이 접수되었습니다', '받으러 오실 때 매장에서 결제해 주시면 됩니다.'],
       '완료':     ['준비 완료', '매장에서 받아가실 수 있습니다.'],
       '취소':     ['취소된 예약입니다', '문의가 필요하시면 매장으로 연락 주세요.'],
     },
     delivery: {
-      '대기':     ['입금을 기다리고 있습니다', '입금이 확인되면 발송 준비에 들어갑니다.'],
-      '입금확인': ['입금이 확인되었습니다', '발송 일정에 맞춰 보내드립니다.'],
+      '대기':     ['입금 대기 중입니다', '제품은 입금 확인 후 준비되어 발송됩니다.'],
+      '입금확인': ['입금이 확인되었습니다', '발송 일정에 맞춰 보냅니다.'],
       '현장결제': ['매장에서 결제하실 예정입니다', '자세한 내용은 매장으로 문의해 주세요.'],
       '완료':     ['발송 완료', '택배사 배송이 시작되었습니다.'],
       '취소':     ['취소된 예약입니다', '문의가 필요하시면 매장으로 연락 주세요.'],
@@ -53,10 +56,18 @@
     }
 
     var contact = contactLine();
+    var cc = CONFIG.customerChange || {};
+    var days = typeof cc.daysBefore === 'number' ? cc.daysBefore : 3;
+    var rule = cc.enabled === false
+      ? (contact ? '변경·취소가 필요하시면 — ' + escapeHtml(contact) : '변경·취소는 매장으로 문의해 주세요.')
+      : '조회 후 <b>예약 변경</b>·<b>예약 취소</b> 버튼으로 직접 처리하실 수 있습니다. ' +
+        '픽업은 수령일 ' + days + '일 전까지, 택배는 발송 시작일 ' + days + '일 전까지만 됩니다.';
     $('noteBox').innerHTML = '<strong>안내</strong><ul>' +
       '<li>예약하실 때 받으신 예약번호(' + escapeHtml(codeSample()) + ' 형태)가 필요합니다.</li>' +
+      '<li>' + rule + '</li>' +
+      '<li>세트·수량을 바꾸시려면 입금 전에 취소하고 다시 예약해 주세요.</li>' +
       '<li>' + (contact
-        ? '예약번호를 잊으셨거나 변경·취소가 필요하시면 — ' + escapeHtml(contact)
+        ? '예약번호를 잊으셨으면 — ' + escapeHtml(contact)
         : '예약번호를 잊으셨으면 매장으로 문의해 주세요.') + '</li></ul>';
   }
 
@@ -84,6 +95,7 @@
       })
       .then(function (data) {
         if (!data || data.ok !== true) throw new Error((data && data.error) || '조회에 실패했습니다.');
+        phoneUsed = phone;
         show(data.order);
       })
       .catch(function (e) { fail(e.message); })
@@ -115,6 +127,7 @@
   }
 
   function show(o) {
+    current = o;
     var delivery = (o.method || 'pickup') === 'delivery';
     var map = STATE[delivery ? 'delivery' : 'pickup'] || {};
     var fallback = (CONFIG.defaultStatus || {})[delivery ? 'delivery' : 'pickup'];
@@ -174,14 +187,317 @@
           '<p class="paybox__title">입금 안내</p>' +
           '<p class="paybox__account">' + escapeHtml(bank.bankName + ' ' + bank.account) + '</p>' +
           (bank.holder ? '<p class="paybox__sub">예금주 ' + escapeHtml(bank.holder) + '</p>' : '') +
-          '<p class="paybox__amount">입금하실 금액 ' + won(o.totalPrice) + '</p>';
+          '<p class="paybox__amount">입금하실 금액 ' + won(o.totalPrice) + '</p>' +
+          '<p class="paybox__sub">입금자명은 예약자 성함 「' + escapeHtml(o.name) + '」 으로 해주세요.</p>';
         box.appendChild(pay);
       }
     }
 
+    renderActions(box, o);
+
     $('findView').hidden = true;
     $('resultView').hidden = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ---------- 손님이 직접 변경·취소 ---------- */
+
+  var EDITABLE = ['대기', '입금확인'];      // 이 상태일 때만 손님이 손댈 수 있습니다
+
+  function renderActions(box, o) {
+    var delivery = (o.method || 'pickup') === 'delivery';
+    var wrap = document.createElement('div');
+    wrap.className = 'order-actions';
+
+    var limit = HF.changeLimit(o.method, o.pickupDate);
+    if (!limit) return;                                    // 기능이 꺼져 있음
+
+    var msg = document.createElement('p');
+    msg.className = 'order-actions__note';
+
+    if (o.status === '취소') {
+      return;                                              // 이미 취소된 예약
+    }
+    if (EDITABLE.indexOf(o.status || '대기') === -1) {
+      msg.textContent = delivery
+        ? '이미 발송된 예약은 변경·취소할 수 없습니다. 매장으로 문의해 주세요.'
+        : '이미 전달된 예약입니다.';
+      wrap.appendChild(msg);
+      box.appendChild(wrap);
+      return;
+    }
+    if (!limit.open) {
+      msg.textContent = '변경·취소 가능 기한(' + korDate(limit.until) + ')이 지났습니다. ' +
+                        '급한 사정은 매장으로 문의해 주세요.';
+      wrap.appendChild(msg);
+      box.appendChild(wrap);
+      return;
+    }
+
+    msg.textContent = (delivery ? '발송 시작일' : '수령일') + ' ' + limit.days + '일 전인 ' +
+                      korDate(limit.until) + '까지 직접 변경·취소하실 수 있습니다.';
+    wrap.appendChild(msg);
+
+    var row = document.createElement('div');
+    row.className = 'order-actions__row';
+
+    var edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'btn btn--ghost';
+    edit.textContent = delivery ? '받는 분·주소 변경' : '수령일·시간 변경';
+    edit.addEventListener('click', function () { openEdit(o); });
+
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'btn btn--ghost btn--danger';
+    cancel.textContent = '예약 취소';
+    cancel.addEventListener('click', function () { askCancel(o, cancel); });
+
+    row.append(edit, cancel);
+    wrap.appendChild(row);
+
+    var err = document.createElement('p');
+    err.className = 'error';
+    err.id = 'actErr';
+    err.hidden = true;
+    wrap.appendChild(err);
+
+    box.appendChild(wrap);
+  }
+
+  function actFail(msg) {
+    var el = $('actErr');
+    if (!el) return alert(msg);
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  /* 서버에 손님 요청을 보냅니다. 예약번호 + 조회에 쓴 연락처로 본인 확인을 합니다. */
+  function sendCustomer(payload) {
+    var body = Object.assign({
+      action: 'customer', code: current.code, phone: phoneUsed,
+      /* 기한 계산에 필요한 값. 서버가 다시 검사합니다. */
+      daysBefore: (CONFIG.customerChange || {}).daysBefore,
+      shipStart: (CONFIG.delivery || {}).shipStart,
+    }, payload);
+    return fetch(CONFIG.sheetUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+    }).then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || data.ok !== true) throw new Error((data && data.error) || '처리하지 못했습니다.');
+        return data;
+      });
+  }
+
+  function askCancel(o, btn) {
+    var paid = o.status === '입금확인';
+    var text = o.code + ' 예약을 취소할까요?\n' +
+      (paid ? '이미 입금하신 금액의 환불은 매장으로 문의해 주세요.\n' : '') +
+      '취소한 뒤에는 되돌릴 수 없습니다.';
+    if (!confirm(text)) return;
+
+    btn.disabled = true;
+    btn.textContent = '취소 중입니다…';
+    sendCustomer({ op: 'cancel' }).then(function (data) {
+      show(data.order);
+      var head = $('result').querySelector('.order-head__desc');
+      if (head) head.textContent = paid
+        ? '취소되었습니다. 입금하신 금액의 환불은 매장으로 문의해 주세요.'
+        : '취소되었습니다. 다시 예약하시려면 아래 「예약하러 가기」를 눌러주세요.';
+    }).catch(function (e) {
+      btn.disabled = false;
+      btn.textContent = '예약 취소';
+      actFail(e.message);
+    });
+  }
+
+  /* ----- 변경 화면 ----- */
+
+  function chips(name, items, selected) {
+    var box = document.createElement('div');
+    box.className = 'chips';
+    items.forEach(function (it) {
+      var value = typeof it === 'string' ? it : it.date;
+      var label = typeof it === 'string' ? it : it.label;
+      var lab = document.createElement('label');
+      lab.className = 'chip';
+      var input = document.createElement('input');
+      input.type = 'radio';
+      input.name = name;
+      input.value = value;
+      input.checked = value === selected;
+      var span = document.createElement('span');
+      span.textContent = label;
+      lab.append(input, span);
+      box.appendChild(lab);
+    });
+    return box;
+  }
+
+  function picked(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  function field(labelText, input, id) {
+    var f = document.createElement('div');
+    f.className = 'field';
+    var l = document.createElement('label');
+    l.className = 'field__label';
+    l.textContent = labelText;
+    if (id) { l.htmlFor = id; input.id = id; }
+    f.append(l, input);
+    return f;
+  }
+
+  function textInput(value, placeholder, maxLength) {
+    var i = document.createElement('input');
+    i.className = 'input';
+    i.type = 'text';
+    i.value = value || '';
+    i.placeholder = placeholder || '';
+    if (maxLength) i.maxLength = maxLength;
+    return i;
+  }
+
+  function openEdit(o) {
+    var delivery = (o.method || 'pickup') === 'delivery';
+    var box = $('result');
+    var old = box.querySelector('.order-actions');
+    if (old) old.remove();
+
+    var form = document.createElement('div');
+    form.className = 'order-edit';
+
+    var title = document.createElement('p');
+    title.className = 'order-edit__title';
+    title.textContent = delivery ? '받는 분·배송지 변경' : '수령일·시간 변경';
+    form.appendChild(title);
+
+    var get;   // 저장할 때 값을 모아 주는 함수
+
+    if (!delivery) {
+      var dl = document.createElement('span');
+      dl.className = 'field__label';
+      dl.textContent = '수령일';
+      form.appendChild(dl);
+      form.appendChild(chips('editDate', (CONFIG.pickup && CONFIG.pickup.dates) || [], o.pickupDate));
+
+      var tl = document.createElement('span');
+      tl.className = 'field__label';
+      tl.style.marginTop = '14px';
+      tl.textContent = '수령 시간';
+      form.appendChild(tl);
+      form.appendChild(chips('editTime', (CONFIG.pickup && CONFIG.pickup.times) || [], o.pickupTime));
+
+      get = function () {
+        var date = picked('editDate'), time = picked('editTime');
+        if (!date || !time) throw new Error('수령일과 시간을 모두 골라주세요.');
+        var hit = (CONFIG.pickup.dates || []).find(function (d) { return d.date === date; });
+        return { op: 'change', pickupDate: date, pickupDateLabel: hit ? hit.label : date, pickupTime: time };
+      };
+    } else {
+      var rn = textInput(o.receiverName, '홍길동', 30);
+      var rp = textInput(o.receiverPhone, '010-1234-5678', 13);
+      rp.type = 'tel';
+      rp.inputMode = 'numeric';
+      rp.addEventListener('input', function (e) { e.target.value = formatPhone(e.target.value); });
+
+      /* 저장된 주소 '[우편번호] 기본주소 상세주소' 를 세 칸으로 나눕니다 */
+      var m = /^\[(\d+)\]\s*(.*)$/.exec(o.address || '');
+      var zip = textInput(m ? m[1] : '', '우편번호', 10);
+      zip.inputMode = 'numeric';
+      var a1 = textInput(m ? m[2] : (o.address || ''), '기본주소 (도로명 또는 지번)', 120);
+      var a2 = textInput('', '상세주소 (동·호수 등) — 다시 적어주세요', 80);
+
+      form.appendChild(field('받는 분 성함', rn, 'editRn'));
+      form.appendChild(field('받는 분 연락처', rp, 'editRp'));
+
+      var addrField = document.createElement('div');
+      addrField.className = 'field';
+      var al = document.createElement('span');
+      al.className = 'field__label';
+      al.textContent = '배송지 주소';
+      addrField.appendChild(al);
+      var addrRow = document.createElement('div');
+      addrRow.className = 'addr-row';
+      addrRow.appendChild(zip);
+      if (HF.hasPostcode()) {
+        var find = document.createElement('button');
+        find.type = 'button';
+        find.className = 'btn btn--ghost';
+        find.textContent = '주소 찾기';
+        find.addEventListener('click', function () {
+          HF.openPostcode(function (z, a) { zip.value = z; a1.value = a; a2.focus(); });
+        });
+        addrRow.appendChild(find);
+      }
+      addrField.appendChild(addrRow);
+      a1.style.marginTop = '9px';
+      a2.style.marginTop = '9px';
+      addrField.append(a1, a2);
+      form.appendChild(addrField);
+
+      var hint = document.createElement('p');
+      hint.className = 'section__hint';
+      hint.style.margin = '0';
+      hint.textContent = '지금 저장된 주소: ' + (o.address || '—');
+      form.appendChild(hint);
+
+      get = function () {
+        if (!rn.value.trim()) throw new Error('받는 분 성함을 입력해 주세요.');
+        if (!validPhone(rp.value.trim())) throw new Error('받는 분 연락처를 정확히 입력해 주세요.');
+        if (!zip.value.trim() || !a1.value.trim()) throw new Error('우편번호와 기본주소를 입력해 주세요.');
+        return {
+          op: 'change',
+          receiverName: rn.value.trim(),
+          receiverPhone: rp.value.trim(),
+          address: ['[' + zip.value.trim() + ']', a1.value.trim(), a2.value.trim()].filter(Boolean).join(' '),
+        };
+      };
+    }
+
+    var err = document.createElement('p');
+    err.className = 'error';
+    err.hidden = true;
+    form.appendChild(err);
+
+    var row = document.createElement('div');
+    row.className = 'order-actions__row';
+    var save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'btn';
+    save.textContent = '이대로 변경';
+    var back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'btn btn--ghost';
+    back.textContent = '돌아가기';
+    back.addEventListener('click', function () { show(o); });
+    row.append(save, back);
+    form.appendChild(row);
+
+    save.addEventListener('click', function () {
+      var payload;
+      try { payload = get(); } catch (e) { err.textContent = e.message; err.hidden = false; return; }
+      err.hidden = true;
+      save.disabled = true;
+      save.textContent = '저장 중입니다…';
+      sendCustomer(payload).then(function (data) {
+        show(data.order);
+        var head = $('result').querySelector('.order-head__desc');
+        if (head) head.textContent = '변경되었습니다. ' + head.textContent;
+      }).catch(function (e) {
+        save.disabled = false;
+        save.textContent = '이대로 변경';
+        err.textContent = e.message;
+        err.hidden = false;
+      });
+    });
+
+    box.appendChild(form);
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   document.addEventListener('DOMContentLoaded', function () {

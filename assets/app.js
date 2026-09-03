@@ -14,11 +14,11 @@
 
   var METHODS = {
     pickup:   { label: '매장 픽업', icon: '🏠',
-                desc: '매장에 직접 오셔서 받아가십니다. 입금 확인 후 준비해 둡니다.',
-                descOnsite: '매장에 직접 오셔서 받아가시고, 결제도 그때 하시면 됩니다.' },
+                desc: '매장에서 직접 받아가는 방법입니다. 제품은 입금 확인 후 준비됩니다.',
+                descOnsite: '매장에서 직접 받아가는 방법입니다. 결제는 받으실 때 매장에서 합니다.' },
     delivery: { label: '택배 발송', icon: '📦',
-                desc: '원하는 주소로 보내드립니다. 입금 확인 후 발송됩니다.',
-                descOnsite: '원하는 주소로 보내드립니다.' },
+                desc: '원하는 주소로 보내는 방법입니다. 제품은 입금 확인 후 발송됩니다.',
+                descOnsite: '원하는 주소로 보내는 방법입니다.' },
   };
 
   /* 선입금이냐 현장 결제냐에 따라 설명이 달라집니다. */
@@ -60,10 +60,7 @@
   var isLocked     = function () { return isBeforeOpen() || isClosed(); };
 
   /* '2026-09-20' → '9월 20일' */
-  function korDate(iso) {
-    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-    return m ? Number(m[2]) + '월 ' + Number(m[3]) + '일' : String(iso || '');
-  }
+  var korDate = HF.korDate;
 
   var enabled = function (key) { return !!(CONFIG[key] && CONFIG[key].enabled); };
 
@@ -159,6 +156,18 @@
   }
 
   /* 예약 안내 상자 (고른 방법에 따라 내용이 달라집니다) */
+  /* 손님이 직접 변경·취소할 수 있는 규칙을 한 줄로 */
+  function changeRule() {
+    var c = CONFIG.customerChange || {};
+    var contact = contactLine();
+    if (c.enabled === false) {
+      return contact ? '예약 변경·취소 문의 — ' + contact : '예약 변경·취소는 매장으로 문의해 주세요.';
+    }
+    var days = typeof c.daysBefore === 'number' ? c.daysBefore : 3;
+    var base = mode === 'pickup' ? '수령일' : '발송 시작일';
+    return '변경·취소는 예약 확인 화면에서 ' + base + ' ' + days + '일 전까지 직접 하실 수 있습니다. 세트·수량 변경은 입금 전에 취소하고 다시 예약해 주세요.';
+  }
+
   function renderNote() {
     var box = $('noteBox');
     var items = [];
@@ -172,9 +181,7 @@
       }
     }
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
-    var contact = contactLine();
-    items.push(contact ? '예약 변경·취소 문의 — ' + contact
-                       : '예약 변경·취소는 매장으로 문의해 주세요.');
+    items.push(changeRule());
 
     box.innerHTML = '<strong>예약 안내</strong><ul>' +
       items.map(function (t) {
@@ -244,7 +251,6 @@
       ? '픽업하실 때 예약을 확인하는 데 사용됩니다.'
       : '주문 확인에 사용되며, 문제가 있을 때만 연락드립니다.';
 
-    $('depositorField').hidden = !isPrepay(m);
     $('memoField').hidden = !CONFIG.showMemo;
     $('cashField').hidden = !cashOn();
 
@@ -557,13 +563,11 @@
     var btn = $('findAddr');
     btn.hidden = false;
     btn.addEventListener('click', function () {
-      new window.daum.Postcode({
-        oncomplete: function (data) {
-          $('postcode').value = data.zonecode || '';
-          $('address1').value = data.roadAddress || data.jibunAddress || '';
-          $('address2').focus();
-        },
-      }).open();
+      HF.openPostcode(function (zip, addr) {
+        $('postcode').value = zip;
+        $('address1').value = addr;
+        $('address2').focus();
+      });
     });
   }
 
@@ -770,7 +774,8 @@
       o.cashReceipt = cashType() + ' ' + $('cashNo').value.trim();
     }
 
-    if (isPrepay()) o.depositor = $('depositor').value.trim() || o.name;
+    /* 입금자명은 예약자 성함과 같아야 입금을 대조할 수 있으므로 따로 받지 않습니다. */
+    if (isPrepay()) o.depositor = o.name;
 
     if (mode === 'pickup') {
       o.pickupDate = picked('pickupDate');
@@ -1086,8 +1091,8 @@
     lead.textContent = !prepaid
       ? '아래 예약번호를 저장해 두시고, 수령일에 매장으로 오시면 됩니다.'
       : (order.method === 'pickup'
-         ? '아래 계좌로 입금해 주시면 확인 후 준비해 두겠습니다.'
-         : '아래 계좌로 입금해 주시면 확인 후 발송해 드립니다.');
+         ? '아래 계좌로 입금이 완료되어야 제품이 준비됩니다.'
+         : '아래 계좌로 입금이 완료되어야 제품이 준비되어 발송됩니다.');
     box.appendChild(lead);
 
     var codeEl = document.createElement('div');
@@ -1146,7 +1151,7 @@
       } else {
         var later = document.createElement('p');
         later.className = 'paybox__sub';
-        later.textContent = '입금 계좌는 매장에서 문자로 안내드립니다.';
+        later.textContent = '입금 계좌는 매장에서 따로 안내합니다.';
         pay.appendChild(later);
       }
 
@@ -1159,7 +1164,7 @@
 
       var payHint = document.createElement('p');
       payHint.className = 'paybox__sub';
-      payHint.textContent = '입금자명이 다르면 매장으로 알려주세요.';
+      payHint.textContent = '입금자명은 예약자 성함 「' + order.name + '」 으로 해주세요.';
       pay.appendChild(payHint);
 
       box.appendChild(pay);
@@ -1219,11 +1224,12 @@
     if (prepaid) {
       var b = HF.bank();
       if (b.bankName && b.account) {
-        payLines.push({ text: '아래 계좌로 입금해 주세요' });
+        payLines.push({ text: '입금이 완료되어야 제품이 준비됩니다' });
         payLines.push({ text: b.bankName + ' ' + b.account, big: true });
         if (b.holder) payLines.push({ text: '예금주 ' + b.holder });
+        payLines.push({ text: '입금자명 「' + order.name + '」' });
       } else {
-        payLines.push({ text: '입금 계좌는 매장에서 안내드립니다.' });
+        payLines.push({ text: '입금 계좌는 매장에서 따로 안내합니다.' });
       }
     }
 
@@ -1253,10 +1259,8 @@
     var strong = document.createElement('strong');
     strong.textContent = msg;
     note.appendChild(strong);
-    var contact = contactLine();
     note.appendChild(document.createElement('br'));
-    note.appendChild(document.createTextNode(
-      contact ? '변경·취소 문의 — ' + contact : '변경·취소는 매장으로 문의해 주세요.'));
+    note.appendChild(document.createTextNode(changeRule()));
     main.appendChild(note);
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
