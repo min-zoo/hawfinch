@@ -804,6 +804,14 @@
     codeEl.textContent = '예약번호 ' + code;
     box.appendChild(codeEl);
 
+    /* 매장에서 따로 연락드리지 않으므로, 예약번호가 유일한 확인 수단입니다. */
+    var codeHint = document.createElement('p');
+    codeHint.className = 'done__codehint';
+    codeHint.textContent = order.method === 'pickup'
+      ? '픽업하실 때 직원에게 이 번호를 보여주세요.'
+      : '문의하실 때 이 번호를 알려주시면 빠릅니다.';
+    box.appendChild(codeHint);
+
     /* 택배: 입금 안내 */
     if (order.method === 'delivery') {
       var bank = (CONFIG.delivery && CONFIG.delivery.bank) || {};

@@ -298,6 +298,15 @@ body {
 .banner--warn   { background: var(--blue-soft);  border-color: #cbe7f7; color: var(--blue-text); }
 .banner--closed { background: #fbeeec; border-color: #f0d2ce; color: var(--danger); }
 
+.done__codehint {
+  margin: 12px 0 0; font-size: 13px; color: var(--ink-soft);
+}
+.order-head__show {
+  margin: 16px 0 0; padding: 10px 14px; display: inline-block;
+  background: var(--green-soft); border-radius: 10px;
+  font-size: 13px; font-weight: 700; color: var(--green-text);
+}
+
 .banner--soon   { background: var(--green-soft); border-color: var(--green-line); color: var(--green-text); }
 
 /* 구글 시트 연결 전 · 손님에게 링크를 뿌리면 안 되는 상태 */
