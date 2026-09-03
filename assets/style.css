@@ -275,6 +275,21 @@ body {
   color: var(--blue-text); letter-spacing: .04em;
 }
 
+/* ---------- 예약 확인 화면 ---------- */
+.order-head {
+  padding: 26px 20px 22px; text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+.order-head__code {
+  display: inline-block; margin: 0 0 14px; padding: 7px 18px;
+  background: var(--blue-soft); border-radius: 999px;
+  font-size: 15px; font-weight: 700; color: var(--blue-text); letter-spacing: .04em;
+}
+.order-head__state { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink); }
+.order-head__desc { margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.order-head--void .order-head__code { background: #efefef; color: var(--ink-faint); }
+.order-head--void .order-head__state { color: var(--ink-faint); }
+
 /* ---------- 안내 띠 ---------- */
 .banner {
   margin: 20px 0 0; padding: 14px 18px; border-radius: 14px;

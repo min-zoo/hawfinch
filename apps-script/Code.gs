@@ -32,15 +32,41 @@ function doPost(e) {
   }
 }
 
-/** 직원용 화면이 예약 목록을 불러올 때 호출됩니다. */
+/**
+ * 직원용 목록(key 필요) 과 손님용 조회(예약번호 + 연락처) 를 처리합니다.
+ */
 function doGet(e) {
   try {
     var p = (e && e.parameter) || {};
+
+    if (p.action === 'lookup') return json({ ok: true, order: lookupOrder(p.code, p.phone) });
+
     requireKey(p.key);
     return json({ ok: true, orders: readOrders() });
   } catch (err) {
     return json({ ok: false, error: String(err && err.message || err) });
   }
+}
+
+
+/**
+ * 손님이 자기 예약을 확인합니다.
+ * 예약번호와 연락처가 둘 다 맞아야 합니다. 하나만으로는 조회되지 않습니다.
+ * (연락처는 주문자 것이든 받는 분 것이든 맞으면 됩니다)
+ */
+function lookupOrder(code, phone) {
+  var c = trim(code).toUpperCase();
+  var d = onlyDigits(phone);
+  if (!c || !d) throw new Error('예약번호와 연락처를 모두 입력해 주세요.');
+
+  var hit = null;
+  readOrders().forEach(function (o) {
+    if (o.code.toUpperCase() !== c) return;
+    if (onlyDigits(o.phone) === d || onlyDigits(o.receiverPhone) === d) hit = o;
+  });
+
+  if (!hit) throw new Error('예약을 찾을 수 없습니다. 예약번호와 연락처를 다시 확인해 주세요.');
+  return hit;
 }
 
 
@@ -221,6 +247,8 @@ function requireKey(key) {
 function isPhone(v) { return /^01[016789]-?\d{3,4}-?\d{4}$/.test(v); }
 
 function trim(v) { return String(v == null ? '' : v).trim(); }
+
+function onlyDigits(v) { return String(v == null ? '' : v).replace(/[^0-9]/g, ''); }
 
 function tz() { return SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'Asia/Seoul'; }
 

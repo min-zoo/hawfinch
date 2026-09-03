@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>호핀치 예약 확인</title>
+<meta name="description" content="예약번호와 연락처로 예약 내용을 확인합니다.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" as="style" crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="stylesheet" href="assets/style.css?v=202609030607">
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero__text">
+    <p class="hero__eyebrow">MY ORDER</p>
+    <h1 class="hero__title">예약 확인</h1>
+    <p class="hero__meta"><span>예약번호와 연락처로 조회합니다</span></p>
+  </div>
+  <div class="hero__deco"><img src="assets/deco.png?v=202609030607" width="695" height="290" alt=""></div>
+</header>
+<div class="rule"><hr></div>
+
+<main class="wrap">
+
+  <section class="section" id="findView">
+    <div class="card">
+      <div class="field">
+        <label class="field__label" for="code">예약번호<span class="req">*</span></label>
+        <input class="input" type="text" id="code" placeholder="CS-0001" maxlength="12"
+               autocapitalize="characters" autocomplete="off">
+      </div>
+      <div class="field">
+        <label class="field__label" for="phone">연락처<span class="req">*</span></label>
+        <input class="input" type="tel" id="phone" inputmode="numeric"
+               placeholder="010-1234-5678" maxlength="13" autocomplete="tel">
+        <p class="section__hint" style="margin:8px 0 0">
+          예약하실 때 적으신 번호입니다. 받는 분 번호로도 조회됩니다.
+        </p>
+      </div>
+    </div>
+    <p class="error" id="err" hidden></p>
+    <button class="btn" type="button" id="findBtn">예약 조회하기</button>
+  </section>
+
+  <section class="section" id="resultView" hidden>
+    <div class="card" id="result"></div>
+    <button class="btn btn--ghost" type="button" id="againBtn"
+            style="width:100%;margin-top:16px;padding:14px">다른 예약 조회</button>
+  </section>
+
+  <div class="note" id="noteBox"></div>
+
+  <footer class="footer">
+    <p id="shopInfo"></p>
+    <p style="margin-top:10px"><a href="index.html">예약하러 가기</a></p>
+  </footer>
+
+</main>
+
+<script src="assets/config.js?v=202609030607"></script>
+<script src="assets/order.js?v=202609030607"></script>
+</body>
+</html>

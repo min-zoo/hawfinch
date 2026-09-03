@@ -219,7 +219,12 @@
     });
   }
 
-  function selectMode(m) {
+  /* 방법을 고르면 브라우저에 '한 단계 들어왔다'고 알려서,
+     뒤로가기를 누르면 사이트를 벗어나지 않고 첫 화면으로 돌아오게 합니다. */
+  function selectMode(m, fromHistory) {
+    if (!fromHistory) {
+      try { history.pushState({ view: 'form', mode: m }, ''); } catch (e) {}
+    }
     mode = m;
     $('chooseView').hidden = true;
     $('formView').hidden = false;
@@ -248,7 +253,10 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  function backToChoose() {
+  function backToChoose(fromHistory) {
+    if (!fromHistory) {
+      try { history.back(); return; } catch (e) {}   // 뒤로가기와 동작을 맞춥니다
+    }
     mode = null;
     $('formView').hidden = true;
     $('chooseView').hidden = false;
@@ -891,6 +899,14 @@
     box.appendChild(recap);
     main.appendChild(box);
 
+    /* 예약번호를 잊어버려도 다시 확인할 수 있게 안내합니다. */
+    var look = document.createElement('a');
+    look.className = 'btn btn--ghost';
+    look.style.cssText = 'display:block;width:100%;margin-top:20px;padding:14px;text-align:center;text-decoration:none';
+    look.href = 'order.html?code=' + encodeURIComponent(code);
+    look.textContent = '예약 내용 다시 보기';
+    main.appendChild(look);
+
     var note = document.createElement('div');
     note.className = 'note';
     var msg = order.method === 'pickup'
@@ -979,14 +995,21 @@
     $('name').addEventListener('input', syncReceiver);
     $('sameAsOrderer').addEventListener('change', syncReceiver);
 
-    $('changeMode').addEventListener('click', backToChoose);
+    $('changeMode').addEventListener('click', function () { backToChoose(); });
+
+    /* 뒤로가기를 누르면 첫 화면으로 */
+    window.addEventListener('popstate', function (e) {
+      var st = e.state;
+      if (st && st.view === 'form' && st.mode) selectMode(st.mode, true);
+      else if (!$('formView').hidden) backToChoose(true);
+    });
     $('form').addEventListener('submit', onSubmit);
     $('form').addEventListener('change', function () { renderSummary(); });
 
     /* 픽업 또는 택배 하나만 열어둔 경우엔 고르는 화면을 건너뜁니다 */
     var open = ['pickup', 'delivery'].filter(enabled);
     if (open.length === 1) {
-      selectMode(open[0]);
+      selectMode(open[0], true);
       $('changeMode').hidden = true;
     }
 
