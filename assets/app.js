@@ -64,18 +64,34 @@
       meta.appendChild(span);
     });
 
-    var bits = [];
-    if (s.name) bits.push(s.name);
-    if (s.address) bits.push(s.address);
+    /* 바닥글: 매장명 · 주소 / 전화 · 인스타그램 */
     var info = $('shopInfo');
-    info.textContent = bits.join(' · ');
+    info.innerHTML = '';
+
+    var line1 = document.createElement('span');
+    line1.className = 'footer__line';
+    line1.textContent = [s.name, s.address].filter(Boolean).join(' · ');
+    info.appendChild(line1);
+
+    var line2 = document.createElement('span');
+    line2.className = 'footer__line';
+
     if (s.phone) {
-      info.appendChild(document.createTextNode(bits.length ? ' · ' : ''));
-      var a = document.createElement('a');
-      a.href = 'tel:' + s.phone.replace(/[^0-9+]/g, '');
-      a.textContent = s.phone;
-      info.appendChild(a);
+      var tel = document.createElement('a');
+      tel.href = 'tel:' + s.phone.replace(/[^0-9+]/g, '');
+      tel.textContent = s.phone;
+      line2.appendChild(tel);
     }
+    if (s.instagram) {
+      if (s.phone) line2.appendChild(document.createTextNode(' · '));
+      var ig = document.createElement('a');
+      ig.href = 'https://instagram.com/' + s.instagram;
+      ig.target = '_blank';
+      ig.rel = 'noopener';
+      ig.textContent = '@' + s.instagram;
+      line2.appendChild(ig);
+    }
+    if (line2.childNodes.length) info.appendChild(line2);
   }
 
   function renderBanner() {
