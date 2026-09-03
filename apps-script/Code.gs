@@ -126,7 +126,7 @@ function createOrder(body) {
   lock.waitLock(20000);
   try {
     var sheet = getSheet();
-    var code = nextCode(sheet);
+    var code = nextCode(sheet, body.codeStart);
     sheet.appendRow([
       code,
       new Date(),
@@ -279,11 +279,13 @@ function syncHeaders(sheet) {
 }
 
 /**
- * CS-0001, CS-0002 … 순서대로 예약번호를 만듭니다.
- * 이미 쓰인 번호 중 가장 큰 값 다음을 씁니다. 시트에서 줄을 지워도
+ * 예약번호를 만듭니다. 기본은 CS-0001 부터이고, 화면(config.js 의
+ * codeStart)이 시작 번호를 보내면 그 번호부터 시작합니다.
+ *
+ * 이미 쓰인 번호 중 가장 큰 값 다음을 쓰므로, 시트에서 줄을 지워도
  * 번호가 겹치지 않습니다. (줄 개수로 세면 지운 뒤 중복됩니다)
  */
-function nextCode(sheet) {
+function nextCode(sheet, start) {
   var last = sheet.getLastRow();
   var max = 0;
   if (last >= 2) {
@@ -292,7 +294,12 @@ function nextCode(sheet) {
       if (m) max = Math.max(max, Number(m[1]));
     });
   }
-  return 'CS-' + ('0000' + (max + 1)).slice(-4);
+
+  var from = Math.floor(Number(start));
+  if (!(from >= 1 && from <= 999999)) from = 1;      // 이상한 값이 오면 무시
+
+  var n = Math.max(max + 1, from);
+  return 'CS-' + ('0000' + n).slice(-4);
 }
 
 /**

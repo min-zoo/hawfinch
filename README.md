@@ -180,6 +180,7 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 하고 싶은 일 | 바꿀 곳 |
 | --- | --- |
 | 매장 이름·전화·주소 | `shop` |
+| 예약번호 시작 번호 | `codeStart` (지금 100 → CS-0100 부터) |
 | 예약 시작일 변경 | `openDate` (이 날짜 전에는 신청이 잠깁니다) |
 | 예약 마감일 변경 | `closeDate` |
 | 세트 가격·이름 수정 | `products` 안의 `name`, `price`, `desc` |
