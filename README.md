@@ -181,6 +181,11 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 
 바꾼 뒤 저장하고 깃허브에 올리면 1~2분 안에 웹사이트에 반영됩니다.
 
+> **바꿨는데 화면이 그대로라면** 브라우저가 옛날 파일을 기억하고 있는
+> 것입니다. `Ctrl + Shift + R`(맥은 `⌘ + Shift + R`)로 강제 새로고침해
+> 보세요. 손님 브라우저에서도 같은 일이 생기지 않도록, 파일을 고친 뒤에는
+> `sh stamp.sh` 를 한 번 실행하고 커밋하면 됩니다.
+
 ---
 
 ## 알아두실 점
@@ -240,6 +245,7 @@ Pretendard 글꼴은 jsDelivr CDN에서 불러옵니다. 혹시 불러오지 못
 ```
 index.html            손님용 예약 페이지
 admin.html            직원용 예약 목록 페이지
+stamp.sh              파일 수정 후 실행 (브라우저 캐시 방지)
 assets/config.js      ★ 매장 정보·상품·날짜 설정 (여기만 고치면 됩니다)
 assets/style.css      디자인 (색은 맨 위 :root 에서 한 번에)
 assets/deco.svg       새·나무 일러스트
