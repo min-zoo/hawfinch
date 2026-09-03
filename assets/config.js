@@ -97,7 +97,7 @@ const CONFIG = {
       name: '원형통쿠키',
       price: 13000,
       stock: null,                       // 만들 수 있는 최대 수량. null 이면 제한 없음
-      image: '',                         // 예: 'assets/products/set-1.jpg' · 비우면 사진 없이 표시
+      image: 'assets/products/set-1.jpg',                         // 예: 'assets/products/set-1.jpg' · 비우면 사진 없이 표시
       desc: '쇼콜라아망드 2ea · 바닐라 3ea · 호지 2ea · 말차 2ea · 헤이즐넛쿠키 3ea · 새쿠키 1ea',
       note: '',                          // 구성 아래 작게 붙는 한 줄. 비워두면 표시되지 않습니다
       badge: '',
