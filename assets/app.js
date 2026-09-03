@@ -54,7 +54,8 @@
     return d === null ? 0 : d;
   }
 
-  var isBeforeOpen = function () { return daysToOpen() > 0; };
+  /* 연습 모드(config.js 의 practice)면 시작일 전에도 열어둡니다. */
+  var isBeforeOpen = function () { return !CONFIG.practice && daysToOpen() > 0; };
   var isClosed     = function () { return daysLeft() < 0; };
   /* 신청을 받을 수 없는 상태 (시작 전이거나 마감 후) */
   var isLocked     = function () { return isBeforeOpen() || isClosed(); };
@@ -128,6 +129,11 @@
   function renderBanner() {
     var box = $('banner');
     var left = daysLeft();
+
+    if (CONFIG.practice && daysToOpen() > 0) {
+      box.innerHTML = '<div class="banner banner--warn">' +
+        '<strong>연습 중입니다.</strong> 정식 예약은 ' + korDate(CONFIG.openDate) + '부터 시작됩니다.</div>';
+    }
 
     if (isBeforeOpen()) {
       box.innerHTML = '<div class="banner banner--soon">' +
