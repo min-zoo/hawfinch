@@ -254,14 +254,29 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 
 ## 새 예약 알림 받기
 
-`apps-script/Code.gs` 위쪽의 `NOTIFY_EMAIL` 에 이메일 주소를 넣고 다시
-배포하면, 예약이 들어올 때마다 메일이 옵니다. 비워두면 보내지 않습니다.
+`apps-script/Code.gs` 위쪽에 두 칸이 있습니다. 하나만 채워도 되고 둘 다
+채워도 됩니다. 비워두면 보내지 않습니다. 새 예약이 들어올 때와 손님이
+직접 취소할 때 알림이 옵니다.
 
 ```js
-var NOTIFY_EMAIL = 'hawfinch@example.com';
+var NOTIFY_EMAIL   = 'hawfinch@example.com';           // 이메일
+var NOTIFY_WEBHOOK = 'https://discord.com/api/webhooks/…';   // 디스코드 또는 슬랙
 ```
 
-메일이 실패해도 예약 접수는 정상으로 진행됩니다.
+**메일함에 쌓이는 게 싫으면 웹훅(디스코드)을 권합니다.** 무료이고, 휴대폰
+디스코드 앱으로 카톡처럼 알림이 옵니다.
+
+디스코드 웹훅 주소 만드는 법 (5분):
+1. 휴대폰이나 PC에 **Discord** 설치 → 가입
+2. 왼쪽 **+** → **서버 만들기** → 이름은 아무거나 (예: 호핀치)
+3. 만들어진 채널(예: #일반) 옆 **톱니바퀴** → **연동** → **웹후크**
+   → **새 웹후크** → **웹후크 URL 복사**
+4. 복사한 주소를 위 `NOTIFY_WEBHOOK` 따옴표 안에 붙여넣고 다시 배포
+
+슬랙을 쓰신다면 Slack 앱 → **Incoming Webhooks** 에서 같은 식으로 주소를
+만들면 됩니다.
+
+알림이 실패해도 예약 접수는 정상으로 진행됩니다.
 
 ---
 

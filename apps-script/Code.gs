@@ -25,9 +25,16 @@ var GUARD = {
   dupMinutes:    2,    // 같은 번호로 같은 내용이 이 시간 안에 또 오면 중복
 };
 
-/* 새 예약이 들어오면 알려줄 이메일 주소.
-   비워두면 알림을 보내지 않습니다. 예: 'hawfinch@example.com' */
-var NOTIFY_EMAIL = '';
+/* ===== 새 예약 알림 =====================================================
+   둘 중 하나만 채워도 되고, 둘 다 채워도 됩니다. 비워두면 보내지 않습니다.
+
+   NOTIFY_EMAIL   : 이메일 주소. 예: 'hawfinch@example.com'
+   NOTIFY_WEBHOOK : 디스코드(Discord) 또는 슬랙(Slack) 채널의 웹훅 주소.
+                    휴대폰 앱으로 바로 알림이 오고, 메일함에 쌓이지 않습니다.
+                    디스코드: 채널 설정 → 연동 → 웹후크 → 새 웹후크 → URL 복사
+                    슬랙    : 앱 → Incoming Webhooks → 채널 선택 → URL 복사      */
+var NOTIFY_EMAIL   = '';
+var NOTIFY_WEBHOOK = '';
 
 var SHEET_NAME = '예약목록';
 var HEADERS = [
@@ -288,23 +295,44 @@ function parsePairs(text) {
 
 /** 새 예약이 들어오면 알려줍니다. 실패해도 예약 접수는 그대로 진행됩니다. */
 function notifyNewOrder(code, method, name, itemsText, total) {
-  if (!NOTIFY_EMAIL) return;
-  try {
-    MailApp.sendEmail({
-      to: NOTIFY_EMAIL,
-      subject: '[호핀치] 새 예약 ' + code + ' · ' + (method === 'pickup' ? '픽업' : '택배'),
-      body: [
-        '예약번호 : ' + code,
-        '수령방법 : ' + (method === 'pickup' ? '매장 픽업' : '택배 발송'),
-        '주문자   : ' + name,
-        '주문내역 : ' + itemsText,
-        '합계     : ' + total + '원',
-        '',
-        '직원용 목록에서 확인하세요.',
-      ].join('\n'),
-    });
-  } catch (e) {
-    // 알림을 못 보내도 예약은 정상 접수되어야 합니다
+  var way = method === 'pickup' ? '픽업' : '택배';
+  notify('새 예약 ' + code + ' · ' + way, [
+    '예약번호 : ' + code,
+    '수령방법 : ' + (method === 'pickup' ? '매장 픽업' : '택배 발송'),
+    '주문자   : ' + name,
+    '주문내역 : ' + itemsText,
+    '합계     : ' + Number(total).toLocaleString('ko-KR') + '원',
+  ]);
+}
+
+/**
+ * 매장에 알림을 보냅니다. 이메일과 웹훅 중 채워진 곳으로 보내고,
+ * 어느 쪽이 실패해도 예약 처리는 그대로 진행됩니다.
+ */
+function notify(title, lines) {
+  var text = lines.join('\n');
+
+  if (NOTIFY_EMAIL) {
+    try {
+      MailApp.sendEmail({
+        to: NOTIFY_EMAIL,
+        subject: '[호핀치] ' + title,
+        body: text + '\n\n직원용 목록에서 확인하세요.',
+      });
+    } catch (e) { /* 알림 실패는 무시 */ }
+  }
+
+  if (NOTIFY_WEBHOOK) {
+    try {
+      var msg = '**[호핀치] ' + title + '**\n' + text;
+      UrlFetchApp.fetch(NOTIFY_WEBHOOK, {
+        method: 'post',
+        contentType: 'application/json',
+        /* content 는 디스코드, text 는 슬랙이 읽습니다. 서로 모르는 칸은 무시합니다. */
+        payload: JSON.stringify({ content: msg, text: msg }),
+        muteHttpExceptions: true,
+      });
+    } catch (e) { /* 알림 실패는 무시 */ }
   }
 }
 
@@ -416,6 +444,12 @@ function customerEdit(body) {
     set('상태', '취소');
     set('취소일시', Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd HH:mm'));
     set('취소사유', '손님 직접 취소' + (status === '입금확인' ? ' (입금 완료 상태 · 환불 필요)' : ''));
+    notify('손님 취소 ' + order.code + (status === '입금확인' ? ' · 환불 필요' : ''), [
+      '예약번호 : ' + order.code,
+      '주문자   : ' + order.name,
+      '주문내역 : ' + order.itemsText,
+      '취소 전 상태 : ' + status,
+    ]);
   } else if (body.op === 'change') {
     if (order.method === 'pickup') {
       var date = trim(body.pickupDate), time = trim(body.pickupTime).slice(0, 40);
