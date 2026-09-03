@@ -161,7 +161,6 @@
 
     if (mode === 'pickup') {
       if (CONFIG.pickup.notice) items.push(CONFIG.pickup.notice);
-      items.push('진행 상황은 예약 확인 페이지에서 직접 보실 수 있습니다.');
     } else {
       if (CONFIG.delivery.notice) items.push(CONFIG.delivery.notice);
       if (feeOf(itemsPrice()) === null) {
