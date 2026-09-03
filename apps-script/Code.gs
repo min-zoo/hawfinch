@@ -243,8 +243,39 @@ function getSheet() {
     sheet.appendRow(HEADERS);
     sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
     sheet.setFrozenRows(1);
+    return sheet;
   }
+  syncHeaders(sheet);
   return sheet;
+}
+
+/**
+ * 이미 쓰고 있는 시트의 열을 지금 HEADERS 에 맞춥니다.
+ *
+ * 나중에 열이 하나 추가되면, 새로 들어오는 예약은 그 열까지 채워 넣는데
+ * 기존 시트에는 그 열이 없어 기록이 한 칸씩 밀립니다. 그래서 빠진 열을
+ * 제자리에 끼워 넣어 기존 예약의 값이 제 칸에 남도록 합니다.
+ */
+function syncHeaders(sheet) {
+  var width = Math.max(sheet.getLastColumn(), 1);
+  var cur = sheet.getRange(1, 1, 1, width).getValues()[0]
+                 .map(function (v) { return String(v).trim(); });
+
+  // 이미 같으면 아무것도 하지 않습니다
+  var same = cur.length >= HEADERS.length &&
+             HEADERS.every(function (h, i) { return cur[i] === h; });
+  if (same) return;
+
+  // 빠진 열을 제자리에 끼워 넣습니다
+  for (var i = 0; i < HEADERS.length; i++) {
+    if (cur[i] === HEADERS[i]) continue;
+    if (cur.indexOf(HEADERS[i]) !== -1) continue;   // 순서만 다른 경우는 건드리지 않음
+    sheet.insertColumnBefore(i + 1);
+    cur.splice(i, 0, HEADERS[i]);
+  }
+
+  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
+  sheet.setFrozenRows(1);
 }
 
 /**
