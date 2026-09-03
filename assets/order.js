@@ -143,7 +143,7 @@
       '<p class="order-head__state">' + escapeHtml(st[0]) + '</p>' +
       (st[1] ? '<p class="order-head__desc">' + escapeHtml(st[1]) + '</p>' : '') +
       (!delivery && o.status !== '취소'
-        ? '<p class="order-head__show">픽업하실 때 이 화면을 직원에게 보여주세요.</p>' : '');
+        ? '<p class="order-head__show">픽업하실 때 받으신 예약번호를 알려주세요.</p>' : '');
     box.appendChild(head);
 
     var body = document.createElement('div');
