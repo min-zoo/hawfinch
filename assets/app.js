@@ -179,6 +179,9 @@
         items.push('배송비는 아직 확정되지 않아 합계에서 빠져 있습니다. 매장에서 함께 안내드립니다.');
       }
     }
+    if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
+    items.push(changeRule());
+
     box.innerHTML = '<strong>예약 안내</strong><ul>' +
       items.map(function (t) {
         var d = document.createElement('div');
