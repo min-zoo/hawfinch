@@ -42,6 +42,16 @@
 
   var enabled = function (key) { return !!(CONFIG[key] && CONFIG[key].enabled); };
 
+  /* 매장 연락처 한 줄. 전화가 없으면 인스타그램으로 대체되고,
+     둘 다 없으면 빈 값이 되어 문구에서 생략됩니다.
+     (뒤에 조사가 붙지 않는 형태로 만들어, 아이디가 무엇이든 어색하지 않게 합니다.) */
+  function contactLine() {
+    var s = CONFIG.shop || {};
+    if (s.phone) return s.phone;
+    if (s.instagram) return '인스타그램 DM @' + s.instagram;
+    return '';
+  }
+
   /* ---------- 머리말 · 안내 ---------- */
 
   function renderShop() {
@@ -100,7 +110,8 @@
 
     if (isClosed()) {
       box.innerHTML = '<div class="banner banner--closed">' +
-        '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.</div>';
+        '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.' +
+        (contactLine() ? '<br>' + contactLine() : '') + '</div>';
     } else if (left <= 3 && left !== Infinity) {
       box.innerHTML = '<div class="banner banner--warn"><strong>예약 마감이 ' +
         (left === 0 ? '오늘' : left + '일') + ' 남았습니다.</strong></div>';
@@ -134,7 +145,9 @@
       }
     }
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
-    items.push('예약 변경·취소는 아래 매장 번호로 연락 주세요.');
+    var contact = contactLine();
+    items.push(contact ? '예약 변경·취소 문의 — ' + contact
+                       : '예약 변경·취소는 매장으로 문의해 주세요.');
 
     box.innerHTML = '<strong>예약 안내</strong><ul>' +
       items.map(function (t) {
@@ -690,10 +703,10 @@
     var strong = document.createElement('strong');
     strong.textContent = msg;
     note.appendChild(strong);
-    if (CONFIG.shop && CONFIG.shop.phone) {
-      note.appendChild(document.createElement('br'));
-      note.appendChild(document.createTextNode('변경·취소 문의: ' + CONFIG.shop.phone));
-    }
+    var contact = contactLine();
+    note.appendChild(document.createElement('br'));
+    note.appendChild(document.createTextNode(
+      contact ? '변경·취소 문의 — ' + contact : '변경·취소는 매장으로 문의해 주세요.'));
     main.appendChild(note);
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
