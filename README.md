@@ -293,6 +293,7 @@ order.html            손님용 예약 확인 페이지
 admin.html            직원용 예약 목록 페이지
 stamp.sh              파일 수정 후 실행 (브라우저 캐시 방지)
 assets/config.js      ★ 매장 정보·상품·날짜 설정 (여기만 고치면 됩니다)
+assets/common.js      세 화면이 함께 쓰는 도우미 (전화번호 서식 등)
 assets/style.css      디자인 (색은 맨 위 :root 에서 한 번에)
 assets/deco.svg       새·나무 일러스트
 assets/app.js         손님 페이지 동작

@@ -2,11 +2,10 @@
 (function () {
   'use strict';
 
-  var $ = function (id) { return document.getElementById(id); };
+  var $ = HF.$, won = HF.won;
   var orders = [];
   var adminKey = '';
 
-  var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
 
   /* 고를 수 있는 처리 상태는 config.js 의 statuses 에서 옵니다.
      '취소' 는 목록에 넣지 않고 별도 취소 버튼이 담당합니다. */
@@ -35,7 +34,6 @@
     return STATUSES.indexOf(s) === -1 ? defaultStatusOf(o) : s;
   }
 
-  var labelOf = function (o) { return statusOf(o); };
 
   function fmtDateTime(iso) {
     if (!iso) return '';
@@ -351,7 +349,7 @@
         o.itemsText, o.totalCount, o.itemsPrice,
         (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
         o.totalPrice, o.cashReceipt, o.receiptIssued ? '발행' : '',
-        o.memo, labelOf(o),
+        o.memo, statusOf(o),
       ].map(esc).join(','));
     });
 

@@ -4,12 +4,13 @@
   'use strict';
 
   var openedAt = Date.now();   // 화면을 연 시각. 너무 빠른 제출을 걸러냅니다.
+  var finished = false;        // 예약을 마치면 화면 구조가 사라집니다.
   var mode = null;        // 'pickup' | 'delivery'
   var qty = {};           // { 상품id: 수량 }
   var submitting = false;
 
-  var $ = function (id) { return document.getElementById(id); };
-  var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
+  var $ = HF.$, won = HF.won, formatPhone = HF.formatPhone,
+      validPhone = HF.validPhone, contactLine = HF.contactLine;
 
   var METHODS = {
     pickup:   { label: '매장 픽업', icon: '🏠',
@@ -58,15 +59,6 @@
 
   var enabled = function (key) { return !!(CONFIG[key] && CONFIG[key].enabled); };
 
-  /* 매장 연락처 한 줄. 전화가 없으면 인스타그램으로 대체되고,
-     둘 다 없으면 빈 값이 되어 문구에서 생략됩니다.
-     (뒤에 조사가 붙지 않는 형태로 만들어, 아이디가 무엇이든 어색하지 않게 합니다.) */
-  function contactLine() {
-    var s = CONFIG.shop || {};
-    if (s.phone) return s.phone;
-    if (s.instagram) return '인스타그램 DM @' + s.instagram;
-    return '';
-  }
 
   /* ---------- 머리말 · 안내 ---------- */
 
@@ -433,14 +425,14 @@
     close.setAttribute('aria-label', '닫기');
     back.appendChild(close);
 
-    function hide() {
+    function closeView() {
       back.remove();
       document.body.style.overflow = '';
       document.removeEventListener('keydown', onKey);
     }
-    function onKey(e) { if (e.key === 'Escape') hide(); }
+    function onKey(e) { if (e.key === 'Escape') closeView(); }
 
-    back.addEventListener('click', hide);
+    back.addEventListener('click', closeView);
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     document.body.appendChild(back);
@@ -524,15 +516,6 @@
 
   /* ---------- 연락처 ---------- */
 
-  function formatPhone(v) {
-    var d = v.replace(/[^0-9]/g, '').slice(0, 11);
-    if (d.length < 4) return d;
-    if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3);
-    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
-    return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
-  }
-
-  var validPhone = function (v) { return /^01[016789]-\d{3,4}-\d{4}$/.test(v); };
 
   /* ---------- 주소 ---------- */
 
@@ -785,6 +768,7 @@
   /* ---------- 완료 화면 ---------- */
 
   function showDone(order, code) {
+    finished = true;
     var main = document.querySelector('.wrap');
     main.innerHTML = '';
 
@@ -1012,8 +996,13 @@
 
     $('changeMode').addEventListener('click', function () { backToChoose(); });
 
-    /* 뒤로가기를 누르면 첫 화면으로 */
+    /* 뒤로가기를 누르면 첫 화면으로.
+       예약을 마친 뒤에는 예약서가 화면에서 사라진 상태라, 되돌리는 대신
+       페이지를 새로 엽니다. (예약을 한 건 더 하려는 손님을 위해) */
     window.addEventListener('popstate', function (e) {
+      if (finished) { location.reload(); return; }
+      if (!$('formView')) return;
+
       var st = e.state;
       if (st && st.view === 'form' && st.mode) selectMode(st.mode, true);
       else if (!$('formView').hidden) backToChoose(true);

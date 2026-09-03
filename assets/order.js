@@ -2,8 +2,8 @@
 (function () {
   'use strict';
 
-  var $ = function (id) { return document.getElementById(id); };
-  var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
+  var $ = HF.$, won = HF.won, formatPhone = HF.formatPhone,
+      contactLine = HF.contactLine, escapeHtml = HF.escapeHtml;
 
   /* 손님에게는 매장 내부 용어 대신 지금 상황을 그대로 알려줍니다. */
   var STATE = {
@@ -23,20 +23,7 @@
     },
   };
 
-  function formatPhone(v) {
-    var d = v.replace(/[^0-9]/g, '').slice(0, 11);
-    if (d.length < 4) return d;
-    if (d.length < 8) return d.slice(0, 3) + '-' + d.slice(3);
-    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
-    return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
-  }
 
-  function contactLine() {
-    var s = CONFIG.shop || {};
-    if (s.phone) return s.phone;
-    if (s.instagram) return '인스타그램 DM @' + s.instagram;
-    return '';
-  }
 
   function renderShop() {
     var s = CONFIG.shop || {};
@@ -68,11 +55,6 @@
         : '예약번호를 잊으셨으면 매장으로 문의해 주세요.') + '</li></ul>';
   }
 
-  function escapeHtml(t) {
-    var d = document.createElement('div');
-    d.textContent = t;
-    return d.innerHTML;
-  }
 
   /* ---------- 조회 ---------- */
 
