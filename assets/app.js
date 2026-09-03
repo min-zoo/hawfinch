@@ -801,15 +801,35 @@
 
   /* ---------- 전송 ---------- */
 
+  var SEND_TIMEOUT_MS = 30000;   // 이보다 오래 걸리면 기다리지 않고 알립니다
+
   function sendToSheet(order) {
+    /* 구글 저장소가 응답을 안 하면 '접수 중' 에서 영원히 멈춰 보입니다.
+       일정 시간이 지나면 끊고 손님에게 상황을 알려줍니다. */
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, SEND_TIMEOUT_MS);
+
     return fetch(CONFIG.sheetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(order),
+      signal: ctrl ? ctrl.signal : undefined,
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') {
+        throw new Error('저장소 응답이 없습니다. 예약이 접수됐을 수도 있으니, 다시 신청하기 전에 「예약 확인」에서 연락처로 조회해 보세요.');
+      }
+      throw new Error('저장소에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.');
     }).then(function (res) {
-      if (!res.ok) throw new Error('서버 응답 오류 ' + res.status);
-      return res.json();
-    }).then(function (data) {
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('저장소 응답 오류 ' + res.status);
+      return res.text();
+    }).then(function (text) {
+      var data;
+      try { data = JSON.parse(text); } catch (e) {
+        /* 예약 데이터가 아니라 구글 로그인 화면 등이 돌아온 경우.
+           Apps Script 배포의 '액세스 권한' 이 '모든 사용자' 가 아닐 때 이렇게 됩니다. */
+        throw new Error('저장소가 예약 데이터가 아닌 응답을 보냈습니다. Apps Script 배포의 액세스 권한이 「모든 사용자」인지 확인해 주세요.');
+      }
       if (!data || data.ok !== true) throw new Error((data && data.error) || '저장에 실패했습니다.');
       return data.code;
     });
@@ -1285,12 +1305,31 @@
     btn.textContent = '접수 중입니다…';
     $('errSubmit').hidden = true;
 
-    var order = buildOrder();
+    /* 구글 저장소는 처음 깨어날 때 몇 초 걸립니다. 멈춘 게 아니라고 알려줍니다. */
+    var slow = setTimeout(function () {
+      if (submitting) btn.textContent = '접수 중입니다… 조금 더 걸리고 있어요';
+    }, 5000);
+
+    var order;
+    try {
+      order = buildOrder();
+    } catch (e) {
+      clearTimeout(slow);
+      submitting = false;
+      btn.disabled = false;
+      btn.textContent = '예약 신청하기';
+      var eb = $('errSubmit');
+      eb.textContent = '화면을 새로 고친 뒤 다시 시도해 주세요. (' + e.message + ')';
+      eb.hidden = false;
+      return;
+    }
     var task = CONFIG.sheetUrl ? sendToSheet(order) : saveLocally(order);
 
     task.then(function (code) {
+      clearTimeout(slow);
       showDone(order, code);
     }).catch(function (err) {
+      clearTimeout(slow);
       submitting = false;
       btn.disabled = false;
       btn.textContent = '예약 신청하기';
