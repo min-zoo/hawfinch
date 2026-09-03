@@ -415,8 +415,8 @@ body {
   overflow-x: auto; background: var(--surface);
   border: 1px solid var(--line); border-radius: var(--radius);
 }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 980px; }
-th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 1080px; }
+th, td { padding: 13px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 th {
   background: var(--surface-soft); font-size: 11px; color: var(--ink-soft);
   font-weight: 700; white-space: nowrap; letter-spacing: .06em;
@@ -438,6 +438,30 @@ td.nowrap .cell-sub { white-space: nowrap; }
 .pill--done { background: var(--green); color: var(--green-deep); }
 .pill--void { background: #efefef; color: #8a8a8a; }
 .pill:disabled { cursor: default; }
+
+/* 처리 상태 고르기 */
+.status-sel {
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1px solid transparent; font: inherit; font-size: 12px; font-weight: 700;
+  appearance: none; -webkit-appearance: none; text-align: center;
+}
+.status-sel:disabled { cursor: default; opacity: .8; }
+.status-sel.pill--wait { background: #f7f0e2; color: #8a6a1e; }
+.status-sel.pill--mid  { background: var(--blue-soft); color: var(--blue-text); }
+.status-sel.pill--done { background: var(--green); color: var(--green-deep); }
+.status-sel.pill--void { background: #efefef; color: #8a8a8a; }
+
+/* 현금영수증 발행 여부 */
+.receipt-btn {
+  margin-top: 6px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  background: #fff; border: 1px solid var(--line-strong);
+  font: inherit; font-size: 12px; color: var(--ink-soft);
+}
+.receipt-btn:hover { border-color: var(--green); color: var(--green-text); }
+.receipt-btn.is-issued {
+  background: var(--green-soft); border-color: var(--green-line); color: var(--green-text);
+  font-weight: 700;
+}
 
 /* 취소 버튼 */
 .void-btn {

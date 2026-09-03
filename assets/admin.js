@@ -8,34 +8,28 @@
 
   var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
 
-  /* 상태는 픽업과 택배가 다릅니다.
-     픽업  : 대기 → 완료
-     택배  : 대기(입금 전) → 확인(입금 확인) → 완료(발송 완료) */
-  var FLOW = {
-    pickup:   ['대기', '완료'],
-    delivery: ['대기', '확인', '완료'],
+  /* 고를 수 있는 처리 상태는 config.js 의 statuses 에서 옵니다.
+     '취소' 는 목록에 넣지 않고 별도 취소 버튼이 담당합니다. */
+  var STATUSES = (typeof CONFIG !== 'undefined' && CONFIG.statuses && CONFIG.statuses.length)
+    ? CONFIG.statuses.slice() : ['대기', '완료'];
+
+  var TONE = {
+    '대기':     'pill--wait',
+    '입금확인': 'pill--mid',
+    '현장결제': 'pill--mid',
+    '완료':     'pill--done',
+    '취소':     'pill--void',
   };
-  var LABEL = {
-    pickup:   { '대기': '준비 대기', '확인': '준비 완료', '완료': '준비 완료', '취소': '취소됨' },
-    delivery: { '대기': '입금 대기', '확인': '입금 확인', '완료': '발송 완료', '취소': '취소됨' },
-  };
-  var TONE = { '대기': 'pill--wait', '확인': 'pill--mid', '완료': 'pill--done', '취소': 'pill--void' };
 
   var isVoid = function (o) { return (o.status || '') === '취소'; };
 
   function statusOf(o) {
-    var s = o.status || '대기';
+    var s = o.status || STATUSES[0];
     if (s === '취소') return '취소';
-    return FLOW[o.method || 'pickup'].indexOf(s) === -1 ? '대기' : s;
+    return STATUSES.indexOf(s) === -1 ? STATUSES[0] : s;
   }
-  function nextStatus(o) {
-    var flow = FLOW[o.method || 'pickup'];
-    var i = flow.indexOf(statusOf(o));
-    return flow[(i + 1) % flow.length];
-  }
-  function labelOf(o) {
-    return (LABEL[o.method || 'pickup'] || LABEL.pickup)[statusOf(o)] || statusOf(o);
-  }
+
+  var labelOf = function (o) { return statusOf(o); };
 
   function fmtDateTime(iso) {
     if (!iso) return '';
@@ -68,21 +62,25 @@
       });
   }
 
-  function saveStatus(code, status) {
+  var saveReceipt = function (code, issued) { return save(code, { receiptIssued: issued }); };
+  var saveStatus  = function (code, status) { return save(code, { status: status }); };
+
+  function save(code, patch) {
     if (!CONFIG.sheetUrl) {
       try {
         var key = 'chuseok-demo-orders';
         var all = JSON.parse(localStorage.getItem(key) || '[]');
-        all.forEach(function (o) { if (o.code === code) o.status = status; });
+        all.forEach(function (o) { if (o.code === code) Object.assign(o, patch); });
         localStorage.setItem(key, JSON.stringify(all));
       } catch (e) { /* 무시 */ }
       return Promise.resolve();
     }
 
+    var body = Object.assign({ action: 'update', key: adminKey, code: code }, patch);
     return fetch(CONFIG.sheetUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'update', key: adminKey, code: code, status: status }),
+      body: JSON.stringify(body),
     }).then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || data.ok !== true) throw new Error((data && data.error) || '변경에 실패했습니다.');
@@ -176,9 +174,7 @@
       td.appendChild(tag);
       tr.appendChild(td);
 
-      tr.appendChild(cell(o.name || '',
-                          [o.phone || '', o.cashReceipt ? '현금영수증 ' + o.cashReceipt : ''],
-                          'nowrap'));
+      tr.appendChild(cell(o.name || '', [o.phone || ''], 'nowrap'));
 
       tr.appendChild(isDelivery
         ? cell(o.receiverName || '', [o.receiverPhone || '', o.address || ''])
@@ -196,30 +192,68 @@
       }
       tr.appendChild(cell(won(o.totalPrice), feeText, 'num'));
 
+      /* 현금영수증 : 손님이 신청한 내용 + 매장이 발행했는지 */
+      var crTd = document.createElement('td');
+      if (o.cashReceipt) {
+        var info = document.createElement('div');
+        info.textContent = o.cashReceipt;
+        crTd.appendChild(info);
+
+        var rb = document.createElement('button');
+        rb.type = 'button';
+        rb.className = 'receipt-btn' + (o.receiptIssued ? ' is-issued' : '');
+        rb.textContent = o.receiptIssued ? '발행 완료' : '미발행';
+        rb.title = '눌러서 발행 여부를 바꿉니다';
+        rb.addEventListener('click', function () {
+          var next = !o.receiptIssued;
+          rb.disabled = true;
+          saveReceipt(o.code, next).then(function () {
+            o.receiptIssued = next;
+            renderRows();
+          }).catch(function (err) {
+            rb.disabled = false;
+            alert('변경 실패: ' + err.message);
+          });
+        });
+        crTd.appendChild(rb);
+      } else {
+        crTd.textContent = '—';
+        crTd.className = 'nowrap';
+      }
+      tr.appendChild(crTd);
+
       tr.appendChild(cell(o.memo || ''));
 
       var stTd = document.createElement('td');
       stTd.className = 'nowrap';
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'pill ' + TONE[statusOf(o)];
-      btn.style.cssText = 'cursor:pointer;border:none;font:inherit';
-      btn.textContent = labelOf(o);
-      btn.title = isVoid(o) ? '취소된 예약입니다' : '눌러서 다음 상태로 넘깁니다';
-      btn.disabled = isVoid(o);
-      btn.addEventListener('click', function () {
-        var next = nextStatus(o);
-        btn.disabled = true;
+
+      var sel = document.createElement('select');
+      sel.className = 'status-sel ' + TONE[statusOf(o)];
+      sel.disabled = isVoid(o);
+      sel.title = isVoid(o) ? '취소된 예약입니다' : '처리 상태를 고르세요';
+
+      (isVoid(o) ? ['취소'] : STATUSES).forEach(function (st) {
+        var op = document.createElement('option');
+        op.value = st;
+        op.textContent = st;
+        if (st === statusOf(o)) op.selected = true;
+        sel.appendChild(op);
+      });
+
+      sel.addEventListener('change', function () {
+        var next = sel.value, prev = statusOf(o);
+        sel.disabled = true;
         saveStatus(o.code, next).then(function () {
           o.status = next;
           renderStats();
           renderRows();
         }).catch(function (err) {
-          btn.disabled = false;
+          sel.value = prev;
+          sel.disabled = false;
           alert('상태 변경 실패: ' + err.message);
         });
       });
-      stTd.appendChild(btn);
+      stTd.appendChild(sel);
 
       /* 취소 / 취소 되돌리기. 진행 상태와 섞이지 않게 별도 버튼으로 둡니다. */
       var vd = document.createElement('button');
@@ -248,6 +282,20 @@
     });
   }
 
+  /* 상태 거르기 목록도 설정에서 만듭니다 */
+  function renderStatusFilter() {
+    var sel = $('filterStatus');
+    var current = sel.value;
+    var opts = ['<option value="">상태 전체</option>'];
+    STATUSES.concat(['취소']).forEach(function (st) {
+      var d = document.createElement('div');
+      d.textContent = st;
+      opts.push('<option value="' + d.innerHTML + '">' + d.innerHTML + '</option>');
+    });
+    sel.innerHTML = opts.join('');
+    sel.value = current;
+  }
+
   function renderDateFilter() {
     var sel = $('filterDate');
     var current = sel.value;
@@ -271,6 +319,7 @@
   }
 
   function render() {
+    renderStatusFilter();
     renderDateFilter();
     renderStats();
     renderRows();
@@ -283,7 +332,8 @@
   function toCsv() {
     var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처',
                 '받는분', '받는분연락처', '배송지주소', '수령일', '수령시간',
-                '주문내역', '수량', '상품금액', '배송비', '합계', '현금영수증', '요청사항', '상태'];
+                '주문내역', '수량', '상품금액', '배송비', '합계',
+                '현금영수증', '현금영수증발행', '요청사항', '상태'];
     var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
 
     var lines = [head.map(esc).join(',')];
@@ -294,7 +344,8 @@
         o.pickupDateLabel || o.pickupDate, o.pickupTime,
         o.itemsText, o.totalCount, o.itemsPrice,
         (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
-        o.totalPrice, o.cashReceipt, o.memo, labelOf(o),
+        o.totalPrice, o.cashReceipt, o.receiptIssued ? '발행' : '',
+        o.memo, labelOf(o),
       ].map(esc).join(','));
     });
 

@@ -10,6 +10,11 @@
    아래 따옴표 안의 글자를 원하는 비밀번호로 꼭 바꿔주세요.        */
 var ADMIN_KEY = '바꿔주세요1234';
 
+/* 직원이 고를 수 있는 처리 상태.
+   assets/config.js 의 statuses 와 같은 값으로 맞춰주세요.
+   '취소' 는 취소 버튼이 쓰므로 항상 허용됩니다. */
+var ALLOWED_STATUS = ['대기', '입금확인', '현장결제', '완료', '취소'];
+
 var SHEET_NAME = '예약목록';
 var HEADERS = [
   '예약번호', '접수일시', '수령방법',
@@ -17,7 +22,7 @@ var HEADERS = [
   '받는분', '받는분연락처', '배송지주소',
   '수령일', '수령일표시', '수령시간',
   '주문내역', '수량', '상품금액', '배송비', '합계',
-  '현금영수증', '요청사항', '상태',
+  '현금영수증', '현금영수증발행', '요청사항', '상태',
 ];
 
 
@@ -140,6 +145,7 @@ function createOrder(body) {
       fee,
       total,
       trim(body.cashReceipt),
+      '',                                  // 발행 여부는 직원이 나중에 체크합니다
       trim(body.memo).slice(0, 300),
       '대기',
     ]);
@@ -152,13 +158,24 @@ function createOrder(body) {
 
 /* ---------- 상태 변경 ---------- */
 
+/**
+ * 직원이 처리 상태나 현금영수증 발행 여부를 바꿉니다.
+ * status 와 receiptIssued 중 보내온 것만 반영합니다.
+ */
 function updateStatus(body) {
   requireKey(body.key);
 
   var code = trim(body.code);
-  var status = trim(body.status);
   if (!code) throw new Error('예약번호가 없습니다.');
-  if (['대기', '확인', '완료', '취소'].indexOf(status) === -1) throw new Error('알 수 없는 상태입니다.');
+
+  var hasStatus  = body.status !== undefined && body.status !== null;
+  var hasReceipt = body.receiptIssued !== undefined && body.receiptIssued !== null;
+  if (!hasStatus && !hasReceipt) throw new Error('바꿀 내용이 없습니다.');
+
+  var status = trim(body.status);
+  if (hasStatus && ALLOWED_STATUS.indexOf(status) === -1) {
+    throw new Error('알 수 없는 상태입니다: ' + status);
+  }
 
   var sheet = getSheet();
   var lastRow = sheet.getLastRow();
@@ -166,10 +183,16 @@ function updateStatus(body) {
 
   var codes = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
   for (var i = 0; i < codes.length; i++) {
-    if (String(codes[i][0]) === code) {
-      sheet.getRange(i + 2, HEADERS.indexOf('상태') + 1).setValue(status);
-      return { ok: true };
+    if (String(codes[i][0]) !== code) continue;
+    var row = i + 2;
+    if (hasStatus) {
+      sheet.getRange(row, HEADERS.indexOf('상태') + 1).setValue(status);
     }
+    if (hasReceipt) {
+      sheet.getRange(row, HEADERS.indexOf('현금영수증발행') + 1)
+           .setValue(body.receiptIssued ? '발행' : '');
+    }
+    return { ok: true };
   }
   throw new Error('해당 예약번호를 찾을 수 없습니다: ' + code);
 }
@@ -202,8 +225,9 @@ function readOrders() {
       shippingFee:     r[14] === '' ? null : (Number(r[14]) || 0),
       totalPrice:      Number(r[15]) || 0,
       cashReceipt:     String(r[16]),
-      memo:            String(r[17]),
-      status:          String(r[18] || '대기'),
+      receiptIssued:   String(r[17]) === '발행',
+      memo:            String(r[18]),
+      status:          String(r[19] || '대기'),
     };
   });
 }
