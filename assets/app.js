@@ -320,12 +320,17 @@
         body.appendChild(note);
       }
 
+      /* 가격과 수량 버튼을 한 줄에 둡니다. 설명 글이 넓게 쓰이도록. */
+      var foot = document.createElement('div');
+      foot.className = 'product__foot';
+
       var price = document.createElement('p');
       price.className = 'product__price';
       price.textContent = pending ? '가격 준비 중' : won(p.price);
       if (pending) price.classList.add('product__price--pending');
-      body.appendChild(price);
+      foot.appendChild(price);
 
+      body.appendChild(foot);
       row.appendChild(body);
 
       if (!p.soldOut && !pending && !isLocked()) {
@@ -363,7 +368,7 @@
         plus.addEventListener('click', function () { step(1); });
 
         ctrl.append(minus, num, plus);
-        row.appendChild(ctrl);
+        foot.appendChild(ctrl);
       }
 
       list.appendChild(row);
