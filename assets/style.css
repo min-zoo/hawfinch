@@ -335,6 +335,15 @@ body {
   letter-spacing: .01em; word-break: keep-all;
 }
 .paybox__sub { margin: 5px 0 0; font-size: 13px; color: var(--ink-soft); }
+.paybox__copy {
+  margin-top: 14px; padding: 10px 20px; border-radius: 999px; cursor: pointer;
+  background: #fff; border: 1px solid #bcdff2; color: var(--blue-text);
+  font: inherit; font-size: 14px; font-weight: 700;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.paybox__copy:hover { background: var(--blue); border-color: var(--blue); color: #17475c; }
+.paybox__copy.is-done { background: var(--green); border-color: var(--green); color: var(--green-deep); }
+
 .paybox__amount {
   margin: 12px 0 0; padding-top: 12px; border-top: 1px solid #cbe7f7;
   font-size: 15px; font-weight: 700; color: var(--blue-text);

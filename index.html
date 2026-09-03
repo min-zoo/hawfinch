@@ -98,6 +98,26 @@
             <textarea class="textarea" id="memo" name="memo" maxlength="300"
                       placeholder="예) 선물용 포장 부탁드립니다 / 쇼핑백 3개 추가"></textarea>
           </div>
+
+          <!-- 현금영수증 (입금 결제일 때만 표시) -->
+          <div class="field" id="cashField" hidden>
+            <label class="check">
+              <input type="checkbox" id="cashWant">
+              <span>현금영수증을 신청합니다</span>
+            </label>
+
+            <div id="cashDetail" hidden style="margin-top:14px">
+              <span class="field__label">용도</span>
+              <div class="chips" id="cashTypeChips"></div>
+
+              <label class="field__label" for="cashNo" style="margin-top:14px">
+                <span id="cashNoLabel">휴대폰 번호</span><span class="req">*</span>
+              </label>
+              <input class="input" type="text" id="cashNo" inputmode="numeric" maxlength="14"
+                     placeholder="010-1234-5678">
+              <p class="error" id="errCash" hidden>번호를 정확히 입력해 주세요.</p>
+            </div>
+          </div>
         </div>
       </section>
 

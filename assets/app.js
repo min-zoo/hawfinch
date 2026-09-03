@@ -234,6 +234,8 @@
       ? '준비가 완료되면 이 번호로 연락드립니다.'
       : '입금 확인과 발송 안내를 이 번호로 드립니다.';
 
+    $('cashField').hidden = !cashOn();
+
     var ship = $('shipNote');
     if (ship) ship.textContent = (CONFIG.delivery && CONFIG.delivery.shipPeriod) || '';
 
@@ -476,10 +478,47 @@
     $('receiverPhone').classList.toggle('input--locked', same);
   }
 
+  /* ---------- 현금영수증 ---------- */
+
+  var CASH_TYPES = ['소득공제', '지출증빙'];
+
+  function cashOn() {
+    var c = (CONFIG.delivery && CONFIG.delivery.cashReceipt) || {};
+    if (!c.enabled) return false;
+    return mode === 'delivery' || (mode === 'pickup' && c.forPickup);
+  }
+
+  var cashType = function () { return picked('cashType') || CASH_TYPES[0]; };
+
+  /* 사업자등록번호 000-00-00000 */
+  function formatBizNo(v) {
+    var d = v.replace(/[^0-9]/g, '').slice(0, 10);
+    if (d.length < 4) return d;
+    if (d.length < 6) return d.slice(0, 3) + '-' + d.slice(3);
+    return d.slice(0, 3) + '-' + d.slice(3, 5) + '-' + d.slice(5);
+  }
+
+  var validBizNo = function (v) { return /^\d{3}-\d{2}-\d{5}$/.test(v); };
+
+  function cashValid() {
+    var v = $('cashNo').value.trim();
+    return cashType() === '지출증빙' ? validBizNo(v) : validPhone(v);
+  }
+
+  /* 용도에 따라 입력 안내와 서식이 달라집니다 */
+  function syncCash() {
+    var want = $('cashWant').checked;
+    $('cashDetail').hidden = !want;
+    var biz = cashType() === '지출증빙';
+    $('cashNoLabel').textContent = biz ? '사업자등록번호' : '휴대폰 번호';
+    $('cashNo').placeholder = biz ? '123-45-67890' : '010-1234-5678';
+    $('cashNo').maxLength = biz ? 12 : 13;
+  }
+
   /* ---------- 검사 ---------- */
 
   var ERROR_IDS = ['errProducts', 'errPickupDate', 'errPickupTime', 'errName', 'errPhone',
-                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errSubmit'];
+                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errCash', 'errSubmit'];
 
   function clearErrors() {
     ERROR_IDS.forEach(function (id) { var el = $(id); if (el) el.hidden = true; });
@@ -492,6 +531,8 @@
     phone:          'errPhone',
     receiverName:   'errReceiverName',
     receiverPhone:  'errReceiverPhone',
+    cashNo:         'errCash',
+    cashTypeChips:  'errCash',
     postcode:       'errAddress',
     address1:       'errAddress',
     address2:       'errAddress',
@@ -532,6 +573,12 @@
     mark('errName', !$('name').value.trim(), $('name'));
     mark('errPhone', !validPhone($('phone').value.trim()), $('phone'));
 
+    if (cashOn() && $('cashWant').checked) {
+      mark('errCash', !cashValid(), $('cashNo'));
+    } else {
+      $('errCash').hidden = true;
+    }
+
     if (mode === 'delivery') {
       mark('errReceiverName', !$('receiverName').value.trim(), $('receiverName'));
       mark('errReceiverPhone', !validPhone($('receiverPhone').value.trim()), $('receiverPhone'));
@@ -568,8 +615,13 @@
       shippingFee: fee,                       // null 이면 미정
       totalPrice:  price + (fee || 0),
       receiverName: '', receiverPhone: '', address: '',
+      cashReceipt: '',
       pickupDate: '', pickupDateLabel: '', pickupTime: '',
     };
+
+    if (cashOn() && $('cashWant').checked) {
+      o.cashReceipt = cashType() + ' ' + $('cashNo').value.trim();
+    }
 
     if (mode === 'pickup') {
       o.pickupDate = picked('pickupDate');
@@ -612,6 +664,30 @@
       localStorage.setItem(key, JSON.stringify(all));
     } catch (e) { /* 저장 못 해도 화면은 정상 진행 */ }
     return Promise.resolve(code);
+  }
+
+  /* 클립보드 복사. 최신 방법이 막혀 있으면 예전 방법으로 한 번 더 시도합니다. */
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text)
+        .then(function () { return true; })
+        .catch(function () { return legacyCopy(text); });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+
+  function legacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:absolute;left:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
   }
 
   /* ---------- 완료 화면 ---------- */
@@ -660,6 +736,24 @@
           holder.textContent = '예금주 ' + bank.holder;
           pay.appendChild(holder);
         }
+
+        /* 계좌번호를 손으로 옮겨 적지 않도록 복사 버튼을 답니다.
+           숫자만 복사해야 은행 앱에 그대로 붙여넣을 수 있습니다. */
+        var copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'paybox__copy';
+        copyBtn.textContent = '계좌번호 복사';
+        copyBtn.addEventListener('click', function () {
+          copyText(bank.account.replace(/[^0-9]/g, '')).then(function (done) {
+            copyBtn.textContent = done ? '복사되었습니다' : '복사하지 못했습니다';
+            copyBtn.classList.toggle('is-done', done);
+            setTimeout(function () {
+              copyBtn.textContent = '계좌번호 복사';
+              copyBtn.classList.remove('is-done');
+            }, 2000);
+          });
+        });
+        pay.appendChild(copyBtn);
       } else {
         var later = document.createElement('p');
         later.className = 'paybox__sub';
@@ -693,9 +787,10 @@
       rows.push(['주문자', order.name]);
       rows.push(['받는 분', order.receiverName + ' · ' + order.receiverPhone]);
       rows.push(['배송지', order.address]);
-      rows.push(['발송 희망일', order.pickupDateLabel]);
+      rows.push(['발송 일정', order.pickupDateLabel]);
     }
     rows.push(['주문내역', order.itemsText]);
+    if (order.cashReceipt) rows.push(['현금영수증', order.cashReceipt]);
     if (order.method === 'delivery') {
       rows.push(['상품 금액', won(order.itemsPrice)]);
       rows.push(['배송비', order.shippingFee === null ? '추후 안내'
@@ -778,6 +873,22 @@
     renderChips('pickupTimeChips', 'pickupTime',
       ((CONFIG.pickup && CONFIG.pickup.times) || []).map(function (t) {
         return { value: t, label: t }; }));
+
+    renderChips('cashTypeChips', 'cashType',
+      CASH_TYPES.map(function (t) { return { value: t, label: t }; }));
+    var firstCash = document.querySelector('input[name="cashType"]');
+    if (firstCash) firstCash.checked = true;
+
+    $('cashWant').addEventListener('change', syncCash);
+    $('cashTypeChips').addEventListener('change', function () {
+      $('cashNo').value = '';
+      syncCash();
+    });
+    $('cashNo').addEventListener('input', function (e) {
+      e.target.value = cashType() === '지출증빙'
+        ? formatBizNo(e.target.value) : formatPhone(e.target.value);
+    });
+    syncCash();
 
     setupAddress();
     watchErrors();

@@ -99,7 +99,7 @@
       if (status && statusOf(o) !== status) return false;
       if (q) {
         var hay = [o.code, o.name, o.phone, o.receiverName, o.receiverPhone,
-                   o.address, o.itemsText].join(' ').toLowerCase();
+                   o.address, o.itemsText, o.cashReceipt].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -169,7 +169,9 @@
       td.appendChild(tag);
       tr.appendChild(td);
 
-      tr.appendChild(cell(o.name || '', o.phone || '', 'nowrap'));
+      tr.appendChild(cell(o.name || '',
+                          [o.phone || '', o.cashReceipt ? '현금영수증 ' + o.cashReceipt : ''],
+                          'nowrap'));
 
       tr.appendChild(isDelivery
         ? cell(o.receiverName || '', [o.receiverPhone || '', o.address || ''])
@@ -251,7 +253,7 @@
   function toCsv() {
     var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처',
                 '받는분', '받는분연락처', '배송지주소', '수령일', '수령시간',
-                '주문내역', '수량', '상품금액', '배송비', '합계', '요청사항', '상태'];
+                '주문내역', '수량', '상품금액', '배송비', '합계', '현금영수증', '요청사항', '상태'];
     var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
 
     var lines = [head.map(esc).join(',')];
@@ -262,7 +264,7 @@
         o.pickupDateLabel || o.pickupDate, o.pickupTime,
         o.itemsText, o.totalCount, o.itemsPrice,
         (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
-        o.totalPrice, o.memo, labelOf(o),
+        o.totalPrice, o.cashReceipt, o.memo, labelOf(o),
       ].map(esc).join(','));
     });
 

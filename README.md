@@ -36,13 +36,11 @@
 - [x] 저장소 공개 전환 + GitHub Pages → main 에 올리면 자동 반영
 - [x] 매장 정보 (마포구 광성로6안길 6 1층, @cafe.hawfinch)
 - [x] 일정 — 예약 9/6~9/12, 택배 9/16~18 순차 발송, 픽업 9/21~9/24
+- [x] 택배 결제 — 배송비 3,500원 (6만원 이상 무료), 국민은행 입금 계좌,
+      계좌번호 복사 버튼, 현금영수증 신청
 
 ### 남은 것
 
-- [ ] **배송비 결정** → `assets/config.js` 의 `delivery.fee`
-      (지금은 미정이라 화면에 "추후 안내"로 뜨고 합계에 안 들어갑니다)
-- [ ] **입금 계좌 입력** → `assets/config.js` 의 `delivery.bank`
-      (지금은 "계좌는 매장에서 문자로 안내드립니다"로 뜹니다)
 - [ ] **실제 세트 이름·가격** → `assets/config.js` 의 `products`
 - [ ] **구글 시트 연결** → 아래 "설치 순서" 1~3단계
 
@@ -168,9 +166,11 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 픽업 날짜·시간 | `pickup.dates`, `pickup.times` |
 | 택배 발송 일정 문구 | `delivery.shipPeriod` |
 | 픽업을 아예 안 받기 | `pickup.enabled: false` |
-| **배송비 정하기** | `delivery.fee` 에 숫자 입력 (예: `3000`) |
-| 얼마 이상 무료배송 | `delivery.freeOver` 에 기준 금액 (예: `50000`) |
-| **입금 계좌 넣기** | `delivery.bank` 의 `bankName`, `account`, `holder` |
+| 배송비 금액 | `delivery.fee` (지금 3500) |
+| 무료배송 기준 | `delivery.freeOver` (지금 60000) |
+| 입금 계좌 | `delivery.bank` 의 `bankName`, `account`, `holder` |
+| 현금영수증 받기/끄기 | `delivery.cashReceipt.enabled` |
+| 픽업에도 현금영수증 | `delivery.cashReceipt.forPickup` 을 `true` 로 |
 | 택배를 아예 안 받기 | `delivery.enabled: false` |
 
 > 픽업과 택배 중 하나만 `enabled: true` 로 두면, 고르는 첫 화면을

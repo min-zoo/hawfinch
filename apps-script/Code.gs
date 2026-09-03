@@ -17,7 +17,7 @@ var HEADERS = [
   '받는분', '받는분연락처', '배송지주소',
   '수령일', '수령일표시', '수령시간',
   '주문내역', '수량', '상품금액', '배송비', '합계',
-  '요청사항', '상태',
+  '현금영수증', '요청사항', '상태',
 ];
 
 
@@ -113,6 +113,7 @@ function createOrder(body) {
       itemsPrice,
       fee,
       total,
+      trim(body.cashReceipt),
       trim(body.memo).slice(0, 300),
       '대기',
     ]);
@@ -174,8 +175,9 @@ function readOrders() {
       itemsPrice:      Number(r[13]) || 0,
       shippingFee:     r[14] === '' ? null : (Number(r[14]) || 0),
       totalPrice:      Number(r[15]) || 0,
-      memo:            String(r[16]),
-      status:          String(r[17] || '대기'),
+      cashReceipt:     String(r[16]),
+      memo:            String(r[17]),
+      status:          String(r[18] || '대기'),
     };
   });
 }
