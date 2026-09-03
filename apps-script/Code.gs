@@ -132,7 +132,7 @@ function updateStatus(body) {
   var code = trim(body.code);
   var status = trim(body.status);
   if (!code) throw new Error('예약번호가 없습니다.');
-  if (['대기', '확인', '완료'].indexOf(status) === -1) throw new Error('알 수 없는 상태입니다.');
+  if (['대기', '확인', '완료', '취소'].indexOf(status) === -1) throw new Error('알 수 없는 상태입니다.');
 
   var sheet = getSheet();
   var lastRow = sheet.getLastRow();
@@ -197,10 +197,21 @@ function getSheet() {
   return sheet;
 }
 
-/** CS-0001, CS-0002 … 순서대로 예약번호를 만듭니다. */
+/**
+ * CS-0001, CS-0002 … 순서대로 예약번호를 만듭니다.
+ * 이미 쓰인 번호 중 가장 큰 값 다음을 씁니다. 시트에서 줄을 지워도
+ * 번호가 겹치지 않습니다. (줄 개수로 세면 지운 뒤 중복됩니다)
+ */
 function nextCode(sheet) {
-  var n = Math.max(0, sheet.getLastRow() - 1) + 1;
-  return 'CS-' + ('0000' + n).slice(-4);
+  var last = sheet.getLastRow();
+  var max = 0;
+  if (last >= 2) {
+    sheet.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
+      var m = /^CS-(\d+)$/.exec(String(r[0]).trim());
+      if (m) max = Math.max(max, Number(m[1]));
+    });
+  }
+  return 'CS-' + ('0000' + (max + 1)).slice(-4);
 }
 
 function requireKey(key) {

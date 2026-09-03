@@ -421,6 +421,20 @@ td.nowrap .cell-sub { white-space: nowrap; }
 .pill--wait { background: #f7f0e2; color: #8a6a1e; }
 .pill--mid  { background: var(--blue-soft); color: var(--blue-text); }
 .pill--done { background: var(--green); color: var(--green-deep); }
+.pill--void { background: #efefef; color: #8a8a8a; }
+.pill:disabled { cursor: default; }
+
+/* 취소 버튼 */
+.void-btn {
+  margin-left: 6px; padding: 4px 10px; border-radius: 999px; cursor: pointer;
+  background: #fff; border: 1px solid var(--line-strong);
+  font: inherit; font-size: 12px; color: var(--ink-soft);
+}
+.void-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+/* 취소된 줄 */
+tbody tr.is-void td { color: var(--ink-faint); }
+tbody tr.is-void td:first-child { text-decoration: line-through; }
 
 /* 픽업 · 택배 구분 딱지 */
 .tag {

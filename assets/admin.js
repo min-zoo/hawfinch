@@ -16,18 +16,22 @@
     delivery: ['대기', '확인', '완료'],
   };
   var LABEL = {
-    pickup:   { '대기': '준비 대기', '확인': '준비 완료', '완료': '준비 완료' },
-    delivery: { '대기': '입금 대기', '확인': '입금 확인', '완료': '발송 완료' },
+    pickup:   { '대기': '준비 대기', '확인': '준비 완료', '완료': '준비 완료', '취소': '취소됨' },
+    delivery: { '대기': '입금 대기', '확인': '입금 확인', '완료': '발송 완료', '취소': '취소됨' },
   };
-  var TONE = { '대기': 'pill--wait', '확인': 'pill--mid', '완료': 'pill--done' };
+  var TONE = { '대기': 'pill--wait', '확인': 'pill--mid', '완료': 'pill--done', '취소': 'pill--void' };
+
+  var isVoid = function (o) { return (o.status || '') === '취소'; };
 
   function statusOf(o) {
     var s = o.status || '대기';
+    if (s === '취소') return '취소';
     return FLOW[o.method || 'pickup'].indexOf(s) === -1 ? '대기' : s;
   }
   function nextStatus(o) {
     var flow = FLOW[o.method || 'pickup'];
-    return flow[(flow.indexOf(statusOf(o)) + 1) % flow.length];
+    var i = flow.indexOf(statusOf(o));
+    return flow[(i + 1) % flow.length];
   }
   function labelOf(o) {
     return (LABEL[o.method || 'pickup'] || LABEL.pickup)[statusOf(o)] || statusOf(o);
@@ -109,14 +113,16 @@
   /* ---------- 화면 그리기 ---------- */
 
   function renderStats() {
-    var list = visibleOrders();
+    var all  = visibleOrders();
+    var list = all.filter(function (o) { return !isVoid(o); });   // 취소는 집계에서 뺍니다
+    var voided = all.length - list.length;
     var pickup = list.filter(function (o) { return (o.method || 'pickup') === 'pickup'; }).length;
     var sets = list.reduce(function (s, o) { return s + Number(o.totalCount || 0); }, 0);
     var sum  = list.reduce(function (s, o) { return s + Number(o.totalPrice || 0); }, 0);
     var todo = list.filter(function (o) { return statusOf(o) !== '완료'; }).length;
 
     var cards = [
-      ['예약 건수', list.length + '건'],
+      ['유효 예약', list.length + '건' + (voided ? ' (취소 ' + voided + ')' : '')],
       ['픽업 / 택배', pickup + ' / ' + (list.length - pickup)],
       ['처리 대기', todo + '건'],
       ['세트 수량', sets + '개'],
@@ -156,7 +162,8 @@
     list.forEach(function (o) {
       var isDelivery = (o.method || 'pickup') === 'delivery';
       var tr = document.createElement('tr');
-      if (statusOf(o) === '완료') tr.className = 'is-done';
+      if (isVoid(o)) tr.className = 'is-void';
+      else if (statusOf(o) === '완료') tr.className = 'is-done';
 
       tr.appendChild(cell(o.code || '', '', 'nowrap'));
       tr.appendChild(cell(fmtDateTime(o.createdAt), '', 'nowrap num'));
@@ -198,7 +205,8 @@
       btn.className = 'pill ' + TONE[statusOf(o)];
       btn.style.cssText = 'cursor:pointer;border:none;font:inherit';
       btn.textContent = labelOf(o);
-      btn.title = '눌러서 다음 상태로 넘깁니다';
+      btn.title = isVoid(o) ? '취소된 예약입니다' : '눌러서 다음 상태로 넘깁니다';
+      btn.disabled = isVoid(o);
       btn.addEventListener('click', function () {
         var next = nextStatus(o);
         btn.disabled = true;
@@ -212,6 +220,28 @@
         });
       });
       stTd.appendChild(btn);
+
+      /* 취소 / 취소 되돌리기. 진행 상태와 섞이지 않게 별도 버튼으로 둡니다. */
+      var vd = document.createElement('button');
+      vd.type = 'button';
+      vd.className = 'void-btn';
+      vd.textContent = isVoid(o) ? '되돌리기' : '취소';
+      vd.title = isVoid(o) ? '취소를 취소하고 대기 상태로' : '이 예약을 취소 처리';
+      vd.addEventListener('click', function () {
+        var next = isVoid(o) ? '대기' : '취소';
+        if (next === '취소' && !confirm(o.code + ' 예약을 취소 처리할까요?\n기록은 남고 집계에서만 빠집니다.')) return;
+        vd.disabled = true;
+        saveStatus(o.code, next).then(function () {
+          o.status = next;
+          renderStats();
+          renderRows();
+        }).catch(function (err) {
+          vd.disabled = false;
+          alert('변경 실패: ' + err.message);
+        });
+      });
+      stTd.appendChild(vd);
+
       tr.appendChild(stTd);
 
       tbody.appendChild(tr);

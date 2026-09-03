@@ -253,6 +253,15 @@
     $('formView').hidden = true;
     $('chooseView').hidden = false;
     clearErrors();
+
+    /* 수령 방법을 바꾸면 배송비 조건이 달라지므로 담은 수량을 비웁니다.
+       방법별로만 쓰는 선택(픽업 날짜·시간)도 함께 지웁니다.
+       성함·연락처처럼 방법과 상관없는 값은 그대로 둡니다. */
+    renderProducts();
+    document.querySelectorAll('input[name="pickupDate"], input[name="pickupTime"]')
+      .forEach(function (el) { el.checked = false; });
+    renderSummary();
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
