@@ -38,6 +38,13 @@
 /* hidden 속성이 항상 이기도록. (.btn 등의 display 선언에 밀리지 않게) */
 [hidden] { display: none !important; }
 
+/* 자동 프로그램을 걸러내는 숨은 칸. display:none 은 봇이 알아채기 쉬워
+   화면 밖으로 밀어냅니다. */
+.trap {
+  position: absolute; left: -9999px; top: auto;
+  width: 1px; height: 1px; overflow: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg);

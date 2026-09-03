@@ -15,6 +15,16 @@ var ADMIN_KEY = '바꿔주세요1234';
    '취소' 는 취소 버튼이 쓰므로 항상 허용됩니다. */
 var ALLOWED_STATUS = ['대기', '입금확인', '현장결제', '완료', '취소'];
 
+/* ===== 가짜 예약 막기 ===================================================
+   실제 손님이 걸리지 않도록 넉넉하게 잡았습니다. 숫자를 고치려면 여기만
+   바꾸고 다시 배포하세요.                                              */
+var GUARD = {
+  minSeconds:    3,    // 이보다 빨리 제출되면 사람이 아니라고 봅니다
+  maxPerPhone:   5,    // 같은 번호로 아래 시간 안에 받을 수 있는 최대 건수
+  windowMinutes: 10,
+  dupMinutes:    2,    // 같은 번호로 같은 내용이 이 시간 안에 또 오면 중복
+};
+
 var SHEET_NAME = '예약목록';
 var HEADERS = [
   '예약번호', '접수일시', '수령방법',
@@ -87,6 +97,15 @@ function createOrder(body) {
   if (!isPhone(phone)) throw new Error('연락처 형식이 올바르지 않습니다.');
   if (!items.length) throw new Error('선택된 선물세트가 없습니다.');
 
+  /* 사람만 통과하는 두 가지 확인 */
+  if (trim(body.trap)) {
+    throw new Error('예약을 접수할 수 없습니다. 매장으로 문의해 주세요.');
+  }
+  var elapsed = Number(body.elapsed);
+  if (isFinite(elapsed) && elapsed >= 0 && elapsed < GUARD.minSeconds * 1000) {
+    throw new Error('잠시 후 다시 시도해 주세요.');
+  }
+
   /* 금액은 화면 값을 그대로 믿지 않고 여기서 다시 계산합니다. */
   var count = 0, itemsPrice = 0, parts = [];
   items.forEach(function (it) {
@@ -126,6 +145,7 @@ function createOrder(body) {
   lock.waitLock(20000);
   try {
     var sheet = getSheet();
+    guardFlood(sheet, phone, parts.join(', '));
     var code = nextCode(sheet, body.codeStart);
     sheet.appendRow([
       code,
@@ -152,6 +172,46 @@ function createOrder(body) {
     return { ok: true, code: code };
   } finally {
     lock.releaseLock();
+  }
+}
+
+
+/**
+ * 같은 번호로 짧은 시간에 몰아서 넣는 것을 막습니다.
+ * 실제 손님이 여러 건을 나눠 넣는 경우까지 막지 않도록 여유를 뒀습니다.
+ */
+function guardFlood(sheet, phone, itemsText) {
+  var last = sheet.getLastRow();
+  if (last < 2) return;
+
+  var iPhone = HEADERS.indexOf('주문자연락처');
+  var iWhen  = HEADERS.indexOf('접수일시');
+  var iItems = HEADERS.indexOf('주문내역');
+
+  /* 최근 줄만 봅니다. 시트가 길어져도 느려지지 않습니다. */
+  var span = Math.min(last - 1, 200);
+  var rows = sheet.getRange(last - span + 1, 1, span, HEADERS.length).getValues();
+
+  var now = new Date().getTime();
+  var d = onlyDigits(phone);
+  var recent = 0;
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    if (onlyDigits(r[iPhone]) !== d) continue;
+
+    var when = r[iWhen] instanceof Date ? r[iWhen].getTime() : 0;
+    if (!when) continue;
+    var minutesAgo = (now - when) / 60000;
+
+    if (minutesAgo <= GUARD.dupMinutes && String(r[iItems]).trim() === itemsText) {
+      throw new Error('방금 같은 내용으로 접수되었습니다. 예약 확인 페이지에서 확인해 주세요.');
+    }
+    if (minutesAgo <= GUARD.windowMinutes) recent++;
+  }
+
+  if (recent >= GUARD.maxPerPhone) {
+    throw new Error('짧은 시간에 너무 많이 신청하셨습니다. 잠시 후 다시 시도하시거나 매장으로 문의해 주세요.');
   }
 }
 

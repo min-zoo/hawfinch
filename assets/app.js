@@ -3,6 +3,7 @@
 (function () {
   'use strict';
 
+  var openedAt = Date.now();   // 화면을 연 시각. 너무 빠른 제출을 걸러냅니다.
   var mode = null;        // 'pickup' | 'delivery'
   var qty = {};           // { 상품id: 수량 }
   var submitting = false;
@@ -695,6 +696,8 @@
       methodLabel: METHODS[mode].label,
       status:      initial,          // 새 예약이 처음 받는 상태
       codeStart:   CONFIG.codeStart,  // 예약번호 시작 값
+      trap:        $('website').value,          // 사람은 비워두는 칸
+      elapsed:     Date.now() - openedAt,       // 작성에 걸린 시간(ms)
       shop:        (CONFIG.shop && CONFIG.shop.name) || '',
       name:        $('name').value.trim(),
       phone:       $('phone').value.trim(),
