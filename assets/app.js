@@ -161,14 +161,13 @@
 
     if (mode === 'pickup') {
       if (CONFIG.pickup.notice) items.push(CONFIG.pickup.notice);
+      items.push('진행 상황은 예약 확인 페이지에서 직접 보실 수 있습니다.');
     } else {
-      items.push('입금이 확인된 뒤 발송됩니다. 계좌는 신청 완료 화면에서 안내드립니다.');
       if (CONFIG.delivery.notice) items.push(CONFIG.delivery.notice);
       if (feeOf(itemsPrice()) === null) {
         items.push('배송비는 아직 확정되지 않아 합계에서 빠져 있습니다. 매장에서 함께 안내드립니다.');
       }
     }
-    items.push('진행 상황은 예약 확인 페이지에서 직접 보실 수 있습니다.');
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
     var contact = contactLine();
     items.push(contact ? '예약 변경·취소 문의 — ' + contact
