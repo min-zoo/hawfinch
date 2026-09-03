@@ -30,7 +30,7 @@ const CONFIG = {
       name: '원형통쿠키',
       price: 13000,
       desc: '쇼콜라아망드 2ea · 바닐라 3ea · 호지 2ea · 말차 2ea · 헤이즐넛쿠키 3ea · 새쿠키 1ea',
-      note: '총 13ea',                   // 구성 아래 작게 붙는 한 줄. 필요 없으면 지우세요
+      note: '',                          // 구성 아래 작게 붙는 한 줄. 비워두면 표시되지 않습니다
       badge: '',
       soldOut: false,
     },
