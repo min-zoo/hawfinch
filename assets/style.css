@@ -78,6 +78,7 @@ body {
   margin: 0 0 16px;
   font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2;
   color: var(--ink);
+  word-break: keep-all;   /* 단어 중간에서 줄이 끊기지 않게 */
 }
 .hero__meta { margin: 0; font-size: 13px; color: var(--ink-soft); }
 .hero__meta span { display: block; letter-spacing: .02em; }
