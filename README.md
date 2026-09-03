@@ -167,6 +167,7 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 세트 추가 | `products` 안의 `{ ... }` 한 덩어리를 복사해 붙여넣고 내용 수정 |
 | 품절 처리 | 해당 세트의 `soldOut: false` → `soldOut: true` |
 | 픽업 날짜·시간 | `pickup.dates`, `pickup.times` |
+| 요청사항 칸 다시 넣기 | `showMemo` 를 `true` 로 (지금은 꺼져 있습니다) |
 | 택배 발송 일정 문구 | `delivery.shipPeriod` |
 | 픽업을 아예 안 받기 | `pickup.enabled: false` |
 | 배송비 금액 | `delivery.fee` (지금 3500) |

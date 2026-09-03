@@ -234,6 +234,7 @@
       ? '준비가 완료되면 이 번호로 연락드립니다.'
       : '입금 확인과 발송 안내를 이 번호로 드립니다.';
 
+    $('memoField').hidden = !CONFIG.showMemo;
     $('cashField').hidden = !cashOn();
 
     var ship = $('shipNote');
