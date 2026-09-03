@@ -77,17 +77,12 @@
 
     var meta = $('heroMeta');
     var lines = [];
-    /* 매장 이름은 맨 위 큰 제목에 이미 들어가 있어 여기서는 빼둡니다. */
-    lines.push('추석 선물세트 사전예약');
+    /* 큰 제목이 '호핀치 선물세트 사전예약' 이므로 여기에는 기간만 적습니다. */
     if (CONFIG.openDate && CONFIG.closeDate) {
       lines.push('예약 기간  ' + korDate(CONFIG.openDate) + ' ~ ' + korDate(CONFIG.closeDate));
     } else if (CONFIG.closeDate) {
       lines.push('예약 마감  ' + korDate(CONFIG.closeDate) + ' 까지');
     }
-    var ways = [];
-    if (enabled('pickup')) ways.push('매장 픽업');
-    if (enabled('delivery')) ways.push('택배 발송');
-    if (ways.length) lines.push(ways.join(' · ') + ' 가능');
 
     meta.innerHTML = '';
     lines.forEach(function (t) {
