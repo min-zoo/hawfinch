@@ -129,8 +129,9 @@
 
   function show(o) {
     var delivery = (o.method || 'pickup') === 'delivery';
-    var st = (STATE[delivery ? 'delivery' : 'pickup'] || {})[o.status] ||
-             ['접수되었습니다', ''];
+    var map = STATE[delivery ? 'delivery' : 'pickup'] || {};
+    var fallback = (CONFIG.defaultStatus || {})[delivery ? 'delivery' : 'pickup'];
+    var st = map[o.status] || map[fallback] || ['접수되었습니다', ''];
 
     var box = $('result');
     box.innerHTML = '';

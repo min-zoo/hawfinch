@@ -151,6 +151,11 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
   | 현장결제 | 픽업하실 때 매장에서 결제 |
   | 완료 | 픽업 전달 완료 또는 택배 발송 완료 |
 
+  **새 예약의 처음 상태**는 수령 방법에 따라 다릅니다.
+  픽업은 매장에서 결제하므로 **현장결제**, 택배는 입금을 기다리므로 **대기**로
+  시작합니다. `assets/config.js` 의 `defaultStatus` 에서 바꿀 수 있고,
+  이 값은 Apps Script 를 다시 배포하지 않아도 바로 반영됩니다.
+
   이 목록은 `assets/config.js` 의 `statuses` 에서 바꿀 수 있습니다.
   바꾸실 때는 `apps-script/Code.gs` 의 `ALLOWED_STATUS` 도 같은 값으로
   맞추고 Apps Script 를 다시 배포해야 합니다.

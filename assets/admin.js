@@ -23,10 +23,16 @@
 
   var isVoid = function (o) { return (o.status || '') === '취소'; };
 
+  /* 상태가 비어 있으면 수령 방법에 맞는 기본값으로 봅니다. */
+  function defaultStatusOf(o) {
+    var d = (CONFIG.defaultStatus || {})[o.method || 'pickup'];
+    return (d && STATUSES.indexOf(d) !== -1) ? d : STATUSES[0];
+  }
+
   function statusOf(o) {
-    var s = o.status || STATUSES[0];
+    var s = o.status || defaultStatusOf(o);
     if (s === '취소') return '취소';
-    return STATUSES.indexOf(s) === -1 ? STATUSES[0] : s;
+    return STATUSES.indexOf(s) === -1 ? defaultStatusOf(o) : s;
   }
 
   var labelOf = function (o) { return statusOf(o); };

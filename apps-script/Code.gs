@@ -147,7 +147,7 @@ function createOrder(body) {
       trim(body.cashReceipt),
       '',                                  // 발행 여부는 직원이 나중에 체크합니다
       trim(body.memo).slice(0, 300),
-      '대기',
+      initialStatus(body.status),
     ]);
     return { ok: true, code: code };
   } finally {
@@ -293,6 +293,17 @@ function nextCode(sheet) {
     });
   }
   return 'CS-' + ('0000' + (max + 1)).slice(-4);
+}
+
+/**
+ * 새 예약의 처음 상태. 화면(config.js 의 defaultStatus)이 보내온 값을 쓰되,
+ * 허용된 값이 아니면 목록의 첫 값으로 둡니다. '취소' 로는 시작할 수 없습니다.
+ * 이렇게 해두면 기본 상태를 바꿀 때 이 코드를 다시 배포하지 않아도 됩니다.
+ */
+function initialStatus(v) {
+  var s = trim(v);
+  if (s && s !== '취소' && ALLOWED_STATUS.indexOf(s) !== -1) return s;
+  return ALLOWED_STATUS[0];
 }
 
 function requireKey(key) {

@@ -686,9 +686,12 @@
     var price = itemsPrice();
     var fee = feeOf(price);
 
+    var initial = (CONFIG.defaultStatus || {})[mode] || (CONFIG.statuses || [])[0] || '대기';
+
     var o = {
       method:      mode,
       methodLabel: METHODS[mode].label,
+      status:      initial,          // 새 예약이 처음 받는 상태
       shop:        (CONFIG.shop && CONFIG.shop.name) || '',
       name:        $('name').value.trim(),
       phone:       $('phone').value.trim(),
