@@ -61,7 +61,7 @@ const CONFIG = {
      예약 확인 화면(order.html)에서 손님이 스스로 수령일·시간(픽업) 또는
      받는 분·주소(택배)를 바꾸거나 예약을 취소할 수 있습니다.
        pickupDaysBefore: 3        → 픽업은 수령일 3일 전까지
-       deliveryUntil: '2026-09-15' → 택배는 이 날까지 (그날 포함)
+       deliveryUntil: '2026-09-12' → 택배는 이 날까지 (그날 포함)
        enabled: false             → 이 기능을 끕니다 (매장 문의로만 처리).
      세트·수량 변경은 지원하지 않습니다. 입금 전이면 취소 후 다시 예약하도록
      안내합니다.
@@ -69,7 +69,7 @@ const CONFIG = {
   customerChange: {
     enabled: true,
     pickupDaysBefore: 3,
-    deliveryUntil: '2026-09-15',
+    deliveryUntil: '2026-09-12',
   },
 
   /* --- 요청사항 칸 --------------------------------------------------- */

@@ -398,7 +398,7 @@ function updateStatus(body) {
    화면(config.js 의 customerChange)이 값을 보내오면 그것을 쓰고, 없으면 여기 값을 씁니다.
      pickupDaysBefore : 픽업은 수령일 며칠 전까지
      deliveryUntil    : 택배는 이 날까지 */
-var CUSTOMER_EDIT = { pickupDaysBefore: 3, deliveryUntil: '2026-09-15' };
+var CUSTOMER_EDIT = { pickupDaysBefore: 3, deliveryUntil: '2026-09-12' };
 var CUSTOMER_EDITABLE = ['대기', '입금확인'];   // 이 상태일 때만 손님이 손댈 수 있습니다
 
 /**
