@@ -62,26 +62,42 @@ var HF = (function () {
            String(d.getDate()).padStart(2, '0');
   }
 
-  /* 손님이 직접 변경·취소할 수 있는 기준.
-     픽업은 수령일, 택배는 발송 시작일(delivery.shipStart)에서
-     customerChange.daysBefore 만큼 앞선 날까지만 됩니다.
-     { until: 'YYYY-MM-DD', days: 3, open: 아직 되는지 } 를 돌려주고,
+  /* 손님이 직접 변경·취소할 수 있는 기준 (config.js 의 customerChange).
+       픽업 : 수령일에서 pickupDaysBefore 만큼 앞선 날까지
+       택배 : deliveryUntil 날짜까지 (그날 포함)
+     { until: 'YYYY-MM-DD', days, open: 아직 되는지 } 를 돌려주고,
      기능이 꺼져 있거나 기준 날짜가 없으면 null 입니다. */
   function changeLimit(method, pickupDate) {
     var c = (typeof CONFIG !== 'undefined' && CONFIG.customerChange) || {};
     if (c.enabled === false) return null;
-    var days = typeof c.daysBefore === 'number' ? c.daysBefore : 3;
-    var ref = method === 'delivery'
-      ? ((CONFIG.delivery && CONFIG.delivery.shipStart) || '')
-      : (pickupDate || '');
-    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ref));
-    if (!m) return null;
-    var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    d.setDate(d.getDate() - days);
-    var until = d.getFullYear() + '-' +
-                String(d.getMonth() + 1).padStart(2, '0') + '-' +
-                String(d.getDate()).padStart(2, '0');
-    return { until: until, days: days, ref: ref, open: todayIso() <= until };
+    var days = typeof c.pickupDaysBefore === 'number' ? c.pickupDaysBefore
+             : (typeof c.daysBefore === 'number' ? c.daysBefore : 3);
+    var iso = /^(\d{4})-(\d{2})-(\d{2})$/;
+    var until;
+    if (method === 'delivery') {
+      if (!iso.test(String(c.deliveryUntil || ''))) return null;
+      until = c.deliveryUntil;
+    } else {
+      var m = iso.exec(String(pickupDate || ''));
+      if (!m) return null;
+      var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      d.setDate(d.getDate() - days);
+      until = d.getFullYear() + '-' +
+              String(d.getMonth() + 1).padStart(2, '0') + '-' +
+              String(d.getDate()).padStart(2, '0');
+    }
+    return { until: until, days: days, open: todayIso() <= until };
+  }
+
+  /* 변경·취소 규칙을 손님에게 설명하는 한 줄 */
+  function changeRuleText(method) {
+    var c = (typeof CONFIG !== 'undefined' && CONFIG.customerChange) || {};
+    var days = typeof c.pickupDaysBefore === 'number' ? c.pickupDaysBefore : 3;
+    var pick = '수령일 ' + days + '일 전까지';
+    var deli = c.deliveryUntil ? korDate(c.deliveryUntil) + '까지' : '';
+    if (method === 'pickup') return pick;
+    if (method === 'delivery') return deli;
+    return '픽업은 ' + pick + ', 택배는 ' + deli;
   }
 
   /* 다음 우편번호 검색창을 엽니다. 스크립트를 못 불러왔으면 false. */
@@ -101,7 +117,7 @@ var HF = (function () {
     $: $, won: won, formatPhone: formatPhone,
     validPhone: validPhone, contactLine: contactLine, escapeHtml: escapeHtml,
     prepay: prepay, bank: bank,
-    korDate: korDate, todayIso: todayIso, changeLimit: changeLimit,
+    korDate: korDate, todayIso: todayIso, changeLimit: changeLimit, changeRuleText: changeRuleText,
     openPostcode: openPostcode, hasPostcode: hasPostcode,
   };
 })();

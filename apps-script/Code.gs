@@ -394,10 +394,11 @@ function updateStatus(body) {
 
 /* ---------- 손님이 직접 변경·취소 ---------- */
 
-/* 손님이 직접 바꿀 수 있는 마지막 날을 셀 때의 기본값.
-   화면(config.js 의 customerChange.daysBefore / delivery.shipStart)이
-   값을 보내오면 그것을 쓰고, 없으면 여기 값을 씁니다. */
-var CUSTOMER_EDIT = { daysBefore: 3, shipStart: '2026-09-16' };
+/* 손님이 직접 바꿀 수 있는 마지막 날의 기본값.
+   화면(config.js 의 customerChange)이 값을 보내오면 그것을 쓰고, 없으면 여기 값을 씁니다.
+     pickupDaysBefore : 픽업은 수령일 며칠 전까지
+     deliveryUntil    : 택배는 이 날까지 */
+var CUSTOMER_EDIT = { pickupDaysBefore: 3, deliveryUntil: '2026-09-15' };
 var CUSTOMER_EDITABLE = ['대기', '입금확인'];   // 이 상태일 때만 손님이 손댈 수 있습니다
 
 /**
@@ -418,15 +419,21 @@ function customerEdit(body) {
     throw new Error('이미 처리가 끝난 예약은 바꿀 수 없습니다. 매장으로 문의해 주세요.');
   }
 
-  /* 기한: 픽업은 시트의 수령일, 택배는 발송 시작일에서 daysBefore 만큼 앞 */
-  var days = Math.floor(Number(body.daysBefore));
-  if (!(days >= 0 && days <= 30)) days = CUSTOMER_EDIT.daysBefore;
-  var ref = order.method === 'delivery'
-    ? (/^\d{4}-\d{2}-\d{2}$/.test(trim(body.shipStart)) ? trim(body.shipStart) : CUSTOMER_EDIT.shipStart)
-    : order.pickupDate;
-  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ref || '');
+  /* 기한: 픽업은 시트의 수령일에서 며칠 앞, 택배는 정해진 날짜까지 */
+  var days = Math.floor(Number(body.pickupDaysBefore));
+  if (!(days >= 0 && days <= 30)) days = CUSTOMER_EDIT.pickupDaysBefore;
+  var isoRe = /^(\d{4})-(\d{2})-(\d{2})$/;
+  var ref, back;
+  if (order.method === 'delivery') {
+    ref = isoRe.test(trim(body.deliveryUntil)) ? trim(body.deliveryUntil) : CUSTOMER_EDIT.deliveryUntil;
+    back = 0;
+  } else {
+    ref = order.pickupDate;
+    back = days;
+  }
+  var m = isoRe.exec(ref || '');
   if (m) {
-    var until = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - days);
+    var until = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) - back);
     var today = Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd');
     if (today > Utilities.formatDate(until, tz(), 'yyyy-MM-dd')) {
       throw new Error('변경·취소 가능 기한(' + Utilities.formatDate(until, tz(), 'M월 d일') + ')이 지났습니다. 매장으로 문의해 주세요.');

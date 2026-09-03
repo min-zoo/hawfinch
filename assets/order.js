@@ -57,18 +57,14 @@
 
     var contact = contactLine();
     var cc = CONFIG.customerChange || {};
-    var days = typeof cc.daysBefore === 'number' ? cc.daysBefore : 3;
     var rule = cc.enabled === false
       ? (contact ? '변경·취소가 필요하시면 — ' + escapeHtml(contact) : '변경·취소는 매장으로 문의해 주세요.')
       : '조회 후 <b>예약 변경</b>·<b>예약 취소</b> 버튼으로 직접 처리하실 수 있습니다. ' +
-        '픽업은 수령일 ' + days + '일 전까지, 택배는 발송 시작일 ' + days + '일 전까지만 됩니다.';
+        escapeHtml(HF.changeRuleText()) + '만 됩니다.';
     $('noteBox').innerHTML = '<strong>안내</strong><ul>' +
       '<li>예약하실 때 받으신 예약번호(' + escapeHtml(codeSample()) + ' 형태)가 필요합니다.</li>' +
       '<li>' + rule + '</li>' +
-      '<li>세트·수량을 바꾸시려면 입금 전에 취소하고 다시 예약해 주세요.</li>' +
-      '<li>' + (contact
-        ? '예약번호를 잊으셨으면 — ' + escapeHtml(contact)
-        : '예약번호를 잊으셨으면 매장으로 문의해 주세요.') + '</li></ul>';
+      '<li>세트·수량을 바꾸시려면 입금 전에 취소하고 다시 예약해 주세요.</li></ul>';
   }
 
 
@@ -234,7 +230,7 @@
       return;
     }
 
-    msg.textContent = (delivery ? '발송 시작일' : '수령일') + ' ' + limit.days + '일 전인 ' +
+    msg.textContent = (delivery ? '' : '수령일 ' + limit.days + '일 전인 ') +
                       korDate(limit.until) + '까지 직접 변경·취소하실 수 있습니다.';
     wrap.appendChild(msg);
 
@@ -277,8 +273,8 @@
     var body = Object.assign({
       action: 'customer', code: current.code, phone: phoneUsed,
       /* 기한 계산에 필요한 값. 서버가 다시 검사합니다. */
-      daysBefore: (CONFIG.customerChange || {}).daysBefore,
-      shipStart: (CONFIG.delivery || {}).shipStart,
+      pickupDaysBefore: (CONFIG.customerChange || {}).pickupDaysBefore,
+      deliveryUntil: (CONFIG.customerChange || {}).deliveryUntil,
     }, payload);
     return fetch(CONFIG.sheetUrl, {
       method: 'POST',
