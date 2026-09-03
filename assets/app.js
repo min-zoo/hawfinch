@@ -271,6 +271,24 @@
       var row = document.createElement('div');
       row.className = 'product' + (p.soldOut || pending ? ' product--out' : '');
 
+      /* 상품 사진. 파일이 없으면 조용히 숨겨서 빈 칸이 남지 않게 합니다. */
+      if (p.image) {
+        var thumb = document.createElement('button');
+        thumb.type = 'button';
+        thumb.className = 'product__thumb';
+        thumb.setAttribute('aria-label', p.name + ' 사진 크게 보기');
+
+        var img = document.createElement('img');
+        img.src = p.image;
+        img.alt = p.name;
+        img.loading = 'lazy';
+        img.addEventListener('error', function () { thumb.remove(); });
+        thumb.appendChild(img);
+        thumb.addEventListener('click', function () { openPhoto(p.image, p.name); });
+
+        row.appendChild(thumb);
+      }
+
       var body = document.createElement('div');
       body.className = 'product__body';
 
@@ -372,6 +390,37 @@
     if (d.fee === null || d.fee === undefined) return null;
     if (d.freeOver !== null && d.freeOver !== undefined && price >= Number(d.freeOver)) return 0;
     return Number(d.fee) || 0;
+  }
+
+  /* 사진을 눌렀을 때 크게 보여줍니다. 어두운 배경 아무 데나 누르면 닫힙니다. */
+  function openPhoto(src, alt) {
+    var back = document.createElement('div');
+    back.className = 'photo-view';
+
+    var img = document.createElement('img');
+    img.src = src;
+    img.alt = alt || '';
+    back.appendChild(img);
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'photo-view__close';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', '닫기');
+    back.appendChild(close);
+
+    function hide() {
+      back.remove();
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKey);
+    }
+    function onKey(e) { if (e.key === 'Escape') hide(); }
+
+    back.addEventListener('click', hide);
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    document.body.appendChild(back);
+    close.focus();
   }
 
   /* ---------- 알약 버튼 ---------- */
