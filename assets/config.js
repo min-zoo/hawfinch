@@ -117,5 +117,5 @@ const CONFIG = {
   /* --- 6. 예약 내용을 저장할 구글 시트 주소 ------------------------- */
   //  README.md 의 안내를 따라 만든 주소를 아래 따옴표 안에 붙여넣으세요.
   //  비워두면 '연습 모드'로 동작합니다 (내 폰에만 저장되고 매장에 안 넘어감).
-  sheetUrl: '',
+  sheetUrl: 'https://script.google.com/macros/s/AKfycby9Y0OsGAyXi_iNY3tY0ikBccrUCtvoyYAFtlLjeOykjvjrM_jGnKTzCRUgZLoxWW56/exec',
 };
