@@ -105,7 +105,7 @@
       if (status && statusOf(o) !== status) return false;
       if (q) {
         var hay = [o.code, o.name, o.phone, o.receiverName, o.receiverPhone,
-                   o.address, o.itemsText, o.cashReceipt].join(' ').toLowerCase();
+                   o.address, o.itemsText, o.cashReceipt, o.depositor].join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -137,17 +137,92 @@
     }).join('');
   }
 
+  /* 상품 id 를 사람이 읽는 이름으로 */
+  function productName(id) {
+    var hit = (CONFIG.products || []).find(function (p) { return p.id === id; });
+    return hit ? hit.name : id;
+  }
+
+  /* 'set-1:2|set-2:1' → [['set-1',2], ['set-2',1]] */
+  function parseCounts(text) {
+    return String(text || '').split('|').map(function (pair) {
+      var kv = pair.split(':');
+      return kv.length === 2 ? [kv[0].trim(), Number(kv[1]) || 0] : null;
+    }).filter(Boolean);
+  }
+
+  /**
+   * 날짜별로 무엇을 몇 개 준비해야 하는지.
+   * 픽업은 수령일 기준, 택배는 발송 일정으로 묶습니다.
+   * 취소된 예약은 빼고 셉니다.
+   */
+  function renderPrep() {
+    var list = visibleOrders().filter(function (o) { return !isVoid(o); });
+    var groups = {};
+
+    list.forEach(function (o) {
+      var key = (o.method === 'delivery' ? '택배 · ' : '픽업 · ') +
+                (o.pickupDateLabel || o.pickupDate || '날짜 미정');
+      groups[key] = groups[key] || { total: 0, items: {} };
+      parseCounts(o.itemCounts).forEach(function (pair) {
+        groups[key].items[pair[0]] = (groups[key].items[pair[0]] || 0) + pair[1];
+        groups[key].total += pair[1];
+      });
+    });
+
+    var keys = Object.keys(groups).sort();
+    var box = $('prepBody');
+    box.innerHTML = '';
+
+    if (!keys.length) {
+      box.innerHTML = '<p class="prep__empty">준비할 예약이 없습니다.</p>';
+      return;
+    }
+
+    keys.forEach(function (k) {
+      var g = groups[k];
+      var card = document.createElement('div');
+      card.className = 'prep__group';
+
+      var h = document.createElement('p');
+      h.className = 'prep__title';
+      h.textContent = k + '  ·  모두 ' + g.total + '개';
+      card.appendChild(h);
+
+      var ul = document.createElement('ul');
+      ul.className = 'prep__list';
+      Object.keys(g.items).sort().forEach(function (id) {
+        var li = document.createElement('li');
+        var nm = document.createElement('span');
+        nm.textContent = productName(id);
+        var ct = document.createElement('b');
+        ct.textContent = g.items[id] + '개';
+        li.append(nm, ct);
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+      box.appendChild(card);
+    });
+  }
+
   /* 칸 하나 만들기. sub 는 작은 글씨로 아랫줄에 붙습니다(여러 줄 가능). */
-  function cell(main, sub, cls) {
+  function cell(main, sub, cls, label) {
     var td = document.createElement('td');
     if (cls) td.className = cls;
-    td.appendChild(document.createTextNode(main || ''));
+    if (label) td.setAttribute('data-label', label);
+
+    /* 값은 한 덩어리로 감쌉니다. 휴대폰에서 칸이 좁아질 때 글자가
+       한 자씩 세로로 쪼개지지 않게 하기 위함입니다. */
+    var wrap = document.createElement('span');
+    wrap.className = 'cell-value';
+    wrap.appendChild(document.createTextNode(main || ''));
     [].concat(sub || []).filter(Boolean).forEach(function (text) {
       var s = document.createElement('span');
       s.className = 'cell-sub';
       s.textContent = text;
-      td.appendChild(s);
+      wrap.appendChild(s);
     });
+    td.appendChild(wrap);
     return td;
   }
 
@@ -167,37 +242,41 @@
       if (isVoid(o)) tr.className = 'is-void';
       else if (statusOf(o) === '완료') tr.className = 'is-done';
 
-      tr.appendChild(cell(o.code || '', '', 'nowrap'));
-      tr.appendChild(cell(fmtDateTime(o.createdAt), '', 'nowrap num'));
+      tr.appendChild(cell(o.code || '', '', 'nowrap', '예약번호'));
+      tr.appendChild(cell(fmtDateTime(o.createdAt), '', 'nowrap num', '접수일'));
 
       var td = document.createElement('td');
       td.className = 'nowrap';
+      td.setAttribute('data-label', '방법');
       var tag = document.createElement('span');
       tag.className = 'tag ' + (isDelivery ? 'tag--delivery' : 'tag--pickup');
       tag.textContent = isDelivery ? '택배' : '픽업';
       td.appendChild(tag);
       tr.appendChild(td);
 
-      tr.appendChild(cell(o.name || '', [o.phone || ''], 'nowrap'));
+      tr.appendChild(cell(o.name || '',
+        [o.phone || '', (o.depositor && o.depositor !== o.name) ? '입금자 ' + o.depositor : ''],
+        'nowrap', '주문자'));
 
       tr.appendChild(isDelivery
-        ? cell(o.receiverName || '', [o.receiverPhone || '', o.address || ''])
-        : cell('—', '', 'nowrap'));
+        ? cell(o.receiverName || '', [o.receiverPhone || '', o.address || ''], '', '받는 분 · 배송지')
+        : cell('—', '', 'nowrap', '받는 분 · 배송지'));
 
       tr.appendChild(cell(o.pickupDateLabel || o.pickupDate || '',
-                          isDelivery ? '' : (o.pickupTime || ''), 'nowrap'));
+                          isDelivery ? '' : (o.pickupTime || ''), 'nowrap', '수령 · 발송'));
 
-      tr.appendChild(cell(o.itemsText || '', '수량 ' + (o.totalCount || 0) + '개'));
+      tr.appendChild(cell(o.itemsText || '', '수량 ' + (o.totalCount || 0) + '개', '', '주문내역'));
 
       var feeText = '';
       if (isDelivery) {
         feeText = o.shippingFee === null || o.shippingFee === undefined
           ? '배송비 미정' : '배송비 ' + won(o.shippingFee);
       }
-      tr.appendChild(cell(won(o.totalPrice), feeText, 'num'));
+      tr.appendChild(cell(won(o.totalPrice), feeText, 'num', '금액'));
 
       /* 현금영수증 : 손님이 신청한 내용 + 매장이 발행했는지 */
       var crTd = document.createElement('td');
+      crTd.setAttribute('data-label', '현금영수증');
       if (o.cashReceipt) {
         var info = document.createElement('div');
         info.textContent = o.cashReceipt;
@@ -226,10 +305,11 @@
       }
       tr.appendChild(crTd);
 
-      tr.appendChild(cell(o.memo || ''));
+      tr.appendChild(cell(o.memo || '', '', '', '요청사항'));
 
       var stTd = document.createElement('td');
       stTd.className = 'nowrap';
+      stTd.setAttribute('data-label', '상태');
 
       var sel = document.createElement('select');
       sel.className = 'status-sel ' + TONE[statusOf(o)];
@@ -251,6 +331,7 @@
           o.status = next;
           renderStats();
           renderRows();
+          renderPrep();
         }).catch(function (err) {
           sel.value = prev;
           sel.disabled = false;
@@ -273,6 +354,7 @@
           o.status = next;
           renderStats();
           renderRows();
+          renderPrep();
         }).catch(function (err) {
           vd.disabled = false;
           alert('변경 실패: ' + err.message);
@@ -324,6 +406,7 @@
 
   function render() {
     renderStatusFilter();
+    renderPrep();
     renderDateFilter();
     renderStats();
     renderRows();
@@ -334,22 +417,22 @@
   /* ---------- 엑셀(CSV) 저장 ---------- */
 
   function toCsv() {
-    var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처',
+    var head = ['예약번호', '접수일시', '수령방법', '주문자', '주문자연락처', '입금자명',
                 '받는분', '받는분연락처', '배송지주소', '수령일', '수령시간',
                 '주문내역', '수량', '상품금액', '배송비', '합계',
-                '현금영수증', '현금영수증발행', '요청사항', '상태'];
+                '현금영수증', '현금영수증발행', '요청사항', '개인정보동의', '상태'];
     var esc = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
 
     var lines = [head.map(esc).join(',')];
     visibleOrders().forEach(function (o) {
       lines.push([
         o.code, o.createdAt, o.methodLabel || ((o.method === 'delivery') ? '택배' : '픽업'),
-        o.name, o.phone, o.receiverName, o.receiverPhone, o.address,
+        o.name, o.phone, o.depositor, o.receiverName, o.receiverPhone, o.address,
         o.pickupDateLabel || o.pickupDate, o.pickupTime,
         o.itemsText, o.totalCount, o.itemsPrice,
         (o.shippingFee === null || o.shippingFee === undefined) ? '미정' : o.shippingFee,
         o.totalPrice, o.cashReceipt, o.receiptIssued ? '발행' : '',
-        o.memo, statusOf(o),
+        o.memo, o.agreed || '', statusOf(o),
       ].map(esc).join(','));
     });
 
@@ -408,11 +491,16 @@
     $('key').addEventListener('keydown', function (e) { if (e.key === 'Enter') unlock(); });
 
     ['search', 'filterMethod', 'filterDate', 'filterStatus'].forEach(function (id) {
-      $(id).addEventListener('input', function () { renderStats(); renderRows(); });
-      $(id).addEventListener('change', function () { renderStats(); renderRows(); });
+      $(id).addEventListener('input', function () { renderStats(); renderRows(); renderPrep(); });
+      $(id).addEventListener('change', function () { renderStats(); renderRows(); renderPrep(); });
     });
     $('reloadBtn').addEventListener('click', load);
     $('csvBtn').addEventListener('click', downloadCsv);
+    $('prepToggle').addEventListener('click', function () {
+      var b = $('prepBody');
+      b.hidden = !b.hidden;
+      $('prepToggle').textContent = b.hidden ? '준비 목록 보기' : '준비 목록 접기';
+    });
 
     var saved = '';
     try { saved = sessionStorage.getItem('chuseok-admin-key') || ''; } catch (e) {}

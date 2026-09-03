@@ -267,6 +267,26 @@ body {
 .footer__line { display: block; }
 .footer__line + .footer__line { margin-top: 4px; }
 
+/* ---------- 개인정보 동의 ---------- */
+.consent { margin-top: 14px; padding: 18px 20px; }
+.consent__more {
+  margin: 10px 0 0 28px; padding: 0; cursor: pointer;
+  background: none; border: none; font: inherit; font-size: 13px;
+  color: var(--ink-soft); text-decoration: underline;
+}
+.consent__detail {
+  margin-top: 12px; padding: 14px 16px;
+  background: var(--surface-soft); border-radius: 12px;
+  font-size: 13px; color: var(--ink-soft); line-height: 1.6;
+}
+.consent__detail dt { font-weight: 700; color: var(--ink); }
+.consent__detail dd { margin: 2px 0 10px; }
+.consent__detail dd:last-of-type { margin-bottom: 0; }
+.consent__detail p { margin: 12px 0 0; }
+
+/* 남은 수량 안내 */
+.product__left { margin: 6px 0 0; font-size: 12px; font-weight: 700; color: var(--danger); }
+
 /* ---------- 완료 화면 ---------- */
 .done { text-align: center; padding: 48px 24px; }
 .done__mark {
@@ -442,6 +462,7 @@ tbody tr.is-done { background: var(--surface-soft); }
 td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 td.nowrap { white-space: nowrap; }
 td.sub { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.cell-value { display: block; }
 .cell-sub { display: block; font-size: 12px; color: var(--ink-soft); margin-top: 2px; line-height: 1.45; }
 td.nowrap .cell-sub { white-space: nowrap; }
 
@@ -500,6 +521,56 @@ tbody tr.is-void td:first-child { text-decoration: line-through; }
 .tag--delivery { background: var(--blue-soft);  color: var(--blue-text); }
 
 .empty { padding: 52px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+/* ---------- 준비 목록 ---------- */
+.prep { margin-bottom: 16px; }
+.prep__toggle {
+  padding: 10px 18px; border-radius: 999px; cursor: pointer;
+  background: var(--green-soft); border: 1px solid var(--green-line);
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--green-text);
+}
+.prep__toggle:hover { background: var(--green); color: var(--green-deep); }
+.prep__body {
+  display: grid; gap: 12px; margin-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.prep__group {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.prep__title { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.prep__list { list-style: none; margin: 0; padding: 0; }
+.prep__list li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 5px 0; font-size: 14px; color: var(--ink-soft);
+}
+.prep__list b { color: var(--green-text); font-variant-numeric: tabular-nums; }
+.prep__empty { margin: 0; color: var(--ink-faint); font-size: 14px; }
+
+/* ---------- 휴대폰에서는 표를 카드로 ---------- */
+@media (max-width: 760px) {
+  .table-scroll { border: none; background: none; overflow: visible; }
+  table { min-width: 0; }
+  thead { display: none; }
+  tbody tr {
+    display: block; margin-bottom: 12px; padding: 6px 2px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  tbody td {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 14px; padding: 9px 16px; border: none; text-align: right;
+  }
+  tbody td + td { border-top: 1px solid var(--line); }
+  tbody td::before {
+    content: attr(data-label);
+    flex: none; text-align: left; font-size: 12px; font-weight: 700;
+    color: var(--ink-soft); letter-spacing: .02em;
+  }
+  tbody td .cell-value { flex: 1; min-width: 0; }
+  tbody td .cell-sub { text-align: right; }
+  .admin-bar .input, .admin-bar .select { flex: 1 1 100%; }
+}
 
 @media (max-width: 560px) {
   .hero { flex-direction: column; gap: 4px; padding-top: 36px; }

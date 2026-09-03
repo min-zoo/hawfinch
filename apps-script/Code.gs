@@ -25,15 +25,27 @@ var GUARD = {
   dupMinutes:    2,    // 같은 번호로 같은 내용이 이 시간 안에 또 오면 중복
 };
 
+/* 새 예약이 들어오면 알려줄 이메일 주소.
+   비워두면 알림을 보내지 않습니다. 예: 'hawfinch@example.com' */
+var NOTIFY_EMAIL = '';
+
 var SHEET_NAME = '예약목록';
 var HEADERS = [
   '예약번호', '접수일시', '수령방법',
-  '주문자', '주문자연락처',
+  '주문자', '주문자연락처', '입금자명',
   '받는분', '받는분연락처', '배송지주소',
   '수령일', '수령일표시', '수령시간',
-  '주문내역', '수량', '상품금액', '배송비', '합계',
-  '현금영수증', '현금영수증발행', '요청사항', '상태',
+  '주문내역', '상품별수량', '수량', '상품금액', '배송비', '합계',
+  '현금영수증', '현금영수증발행', '요청사항', '개인정보동의', '상태',
 ];
+
+/* 열 위치는 항상 이름으로 찾습니다. 번호를 적어두면 열이 하나 늘어날 때마다
+   전부 어긋나기 때문입니다. */
+function col(name) {
+  var i = HEADERS.indexOf(name);
+  if (i === -1) throw new Error('알 수 없는 열: ' + name);
+  return i;
+}
 
 
 /** 손님이 예약을 보내거나, 직원이 상태를 바꿀 때 호출됩니다. */
@@ -146,29 +158,37 @@ function createOrder(body) {
   try {
     var sheet = getSheet();
     guardFlood(sheet, phone, parts.join(', '));
+    guardStock(sheet, body.itemCounts, body.stockLimits);
     var code = nextCode(sheet, body.codeStart);
-    sheet.appendRow([
-      code,
-      new Date(),
-      method === 'pickup' ? '픽업' : '택배',
-      name,
-      phone,
-      receiverName,
-      receiverPhone,
-      address,
-      day,
-      trim(body.pickupDateLabel),
-      pickupTime,
-      parts.join(', '),
-      count,
-      itemsPrice,
-      fee,
-      total,
-      trim(body.cashReceipt),
-      '',                                  // 발행 여부는 직원이 나중에 체크합니다
-      trim(body.memo).slice(0, 300),
-      initialStatus(body.status),
-    ]);
+    var row = [];
+    row[col('예약번호')]      = code;
+    row[col('접수일시')]      = new Date();
+    row[col('수령방법')]      = method === 'pickup' ? '픽업' : '택배';
+    row[col('주문자')]        = name;
+    row[col('주문자연락처')]  = phone;
+    row[col('입금자명')]      = trim(body.depositor);
+    row[col('받는분')]        = receiverName;
+    row[col('받는분연락처')]  = receiverPhone;
+    row[col('배송지주소')]    = address;
+    row[col('수령일')]        = day;
+    row[col('수령일표시')]    = trim(body.pickupDateLabel);
+    row[col('수령시간')]      = pickupTime;
+    row[col('주문내역')]      = parts.join(', ');
+    row[col('상품별수량')]    = trim(body.itemCounts);
+    row[col('수량')]          = count;
+    row[col('상품금액')]      = itemsPrice;
+    row[col('배송비')]        = fee;
+    row[col('합계')]          = total;
+    row[col('현금영수증')]    = trim(body.cashReceipt);
+    row[col('현금영수증발행')] = '';       // 발행 여부는 직원이 나중에 체크합니다
+    row[col('요청사항')]      = trim(body.memo).slice(0, 300);
+    row[col('개인정보동의')]  = trim(body.agreed);
+    row[col('상태')]          = initialStatus(body.status);
+
+    for (var k = 0; k < HEADERS.length; k++) if (row[k] === undefined) row[k] = '';
+    sheet.appendRow(row);
+
+    notifyNewOrder(code, method, name, parts.join(', '), total);
     return { ok: true, code: code };
   } finally {
     lock.releaseLock();
@@ -184,9 +204,9 @@ function guardFlood(sheet, phone, itemsText) {
   var last = sheet.getLastRow();
   if (last < 2) return;
 
-  var iPhone = HEADERS.indexOf('주문자연락처');
-  var iWhen  = HEADERS.indexOf('접수일시');
-  var iItems = HEADERS.indexOf('주문내역');
+  var iPhone = col('주문자연락처');
+  var iWhen  = col('접수일시');
+  var iItems = col('주문내역');
 
   /* 최근 줄만 봅니다. 시트가 길어져도 느려지지 않습니다. */
   var span = Math.min(last - 1, 200);
@@ -212,6 +232,77 @@ function guardFlood(sheet, phone, itemsText) {
 
   if (recent >= GUARD.maxPerPhone) {
     throw new Error('짧은 시간에 너무 많이 신청하셨습니다. 잠시 후 다시 시도하시거나 매장으로 문의해 주세요.');
+  }
+}
+
+
+/**
+ * 만들 수 있는 수량을 넘겨 받지 않도록 막습니다.
+ * 두 손님이 동시에 마지막 하나를 담는 경우도 여기서 걸러집니다.
+ * (화면에서도 남은 수량을 보여주지만, 최종 판단은 여기서 합니다)
+ */
+function guardStock(sheet, itemCounts, stockLimits) {
+  var limits = parsePairs(stockLimits);
+  var want = parsePairs(itemCounts);
+  if (!Object.keys(limits).length || !Object.keys(want).length) return;
+
+  var sold = {};
+  var last = sheet.getLastRow();
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+    var iCounts = col('상품별수량');
+    var iStatus = col('상태');
+    rows.forEach(function (r) {
+      if (String(r[iStatus]).trim() === '취소') return;    // 취소된 건 빼고 셉니다
+      var m = parsePairs(r[iCounts]);
+      Object.keys(m).forEach(function (id) { sold[id] = (sold[id] || 0) + m[id]; });
+    });
+  }
+
+  Object.keys(want).forEach(function (id) {
+    if (!(id in limits)) return;
+    var left = limits[id] - (sold[id] || 0);
+    if (want[id] > left) {
+      throw new Error(left > 0
+        ? '남은 수량이 ' + left + '개뿐입니다. 수량을 줄여 다시 시도해 주세요.'
+        : '방금 품절되었습니다. 다른 세트를 확인해 주세요.');
+    }
+  });
+}
+
+/** 'set-1:2|set-2:1' 을 { 'set-1': 2, 'set-2': 1 } 로 */
+function parsePairs(text) {
+  var out = {};
+  String(text || '').split('|').forEach(function (pair) {
+    var kv = pair.split(':');
+    if (kv.length !== 2) return;
+    var k = trim(kv[0]);
+    var v = Math.floor(Number(kv[1]));
+    if (k && isFinite(v) && v >= 0) out[k] = v;
+  });
+  return out;
+}
+
+
+/** 새 예약이 들어오면 알려줍니다. 실패해도 예약 접수는 그대로 진행됩니다. */
+function notifyNewOrder(code, method, name, itemsText, total) {
+  if (!NOTIFY_EMAIL) return;
+  try {
+    MailApp.sendEmail({
+      to: NOTIFY_EMAIL,
+      subject: '[호핀치] 새 예약 ' + code + ' · ' + (method === 'pickup' ? '픽업' : '택배'),
+      body: [
+        '예약번호 : ' + code,
+        '수령방법 : ' + (method === 'pickup' ? '매장 픽업' : '택배 발송'),
+        '주문자   : ' + name,
+        '주문내역 : ' + itemsText,
+        '합계     : ' + total + '원',
+        '',
+        '직원용 목록에서 확인하세요.',
+      ].join('\n'),
+    });
+  } catch (e) {
+    // 알림을 못 보내도 예약은 정상 접수되어야 합니다
   }
 }
 
@@ -246,10 +337,10 @@ function updateStatus(body) {
     if (String(codes[i][0]) !== code) continue;
     var row = i + 2;
     if (hasStatus) {
-      sheet.getRange(row, HEADERS.indexOf('상태') + 1).setValue(status);
+      sheet.getRange(row, col('상태') + 1).setValue(status);
     }
     if (hasReceipt) {
-      sheet.getRange(row, HEADERS.indexOf('현금영수증발행') + 1)
+      sheet.getRange(row, col('현금영수증발행') + 1)
            .setValue(body.receiptIssued ? '발행' : '');
     }
     return { ok: true };
@@ -265,29 +356,36 @@ function readOrders() {
   if (sheet.getLastRow() < 2) return [];
 
   var rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, HEADERS.length).getValues();
-  return rows.filter(function (r) { return r[0]; }).map(function (r) {
+  var g = function (r, name) { return r[col(name)]; };
+
+  return rows.filter(function (r) { return r[col('예약번호')]; }).map(function (r) {
+    var day = g(r, '수령일');
+    var when = g(r, '접수일시');
     return {
-      code:            String(r[0]),
-      createdAt:       r[1] instanceof Date ? r[1].toISOString() : String(r[1]),
-      method:          String(r[2]) === '택배' ? 'delivery' : 'pickup',
-      methodLabel:     String(r[2]),
-      name:            String(r[3]),
-      phone:           String(r[4]),
-      receiverName:    String(r[5]),
-      receiverPhone:   String(r[6]),
-      address:         String(r[7]),
-      pickupDate:      r[8] instanceof Date ? Utilities.formatDate(r[8], tz(), 'yyyy-MM-dd') : String(r[8]),
-      pickupDateLabel: String(r[9]),
-      pickupTime:      String(r[10]),
-      itemsText:       String(r[11]),
-      totalCount:      Number(r[12]) || 0,
-      itemsPrice:      Number(r[13]) || 0,
-      shippingFee:     r[14] === '' ? null : (Number(r[14]) || 0),
-      totalPrice:      Number(r[15]) || 0,
-      cashReceipt:     String(r[16]),
-      receiptIssued:   String(r[17]) === '발행',
-      memo:            String(r[18]),
-      status:          String(r[19] || '대기'),
+      code:            String(g(r, '예약번호')),
+      createdAt:       when instanceof Date ? when.toISOString() : String(when),
+      method:          String(g(r, '수령방법')) === '택배' ? 'delivery' : 'pickup',
+      methodLabel:     String(g(r, '수령방법')),
+      name:            String(g(r, '주문자')),
+      phone:           String(g(r, '주문자연락처')),
+      depositor:       String(g(r, '입금자명')),
+      receiverName:    String(g(r, '받는분')),
+      receiverPhone:   String(g(r, '받는분연락처')),
+      address:         String(g(r, '배송지주소')),
+      pickupDate:      day instanceof Date ? Utilities.formatDate(day, tz(), 'yyyy-MM-dd') : String(day),
+      pickupDateLabel: String(g(r, '수령일표시')),
+      pickupTime:      String(g(r, '수령시간')),
+      itemsText:       String(g(r, '주문내역')),
+      itemCounts:      String(g(r, '상품별수량')),
+      totalCount:      Number(g(r, '수량')) || 0,
+      itemsPrice:      Number(g(r, '상품금액')) || 0,
+      shippingFee:     g(r, '배송비') === '' ? null : (Number(g(r, '배송비')) || 0),
+      totalPrice:      Number(g(r, '합계')) || 0,
+      cashReceipt:     String(g(r, '현금영수증')),
+      receiptIssued:   String(g(r, '현금영수증발행')) === '발행',
+      memo:            String(g(r, '요청사항')),
+      agreed:          String(g(r, '개인정보동의')),
+      status:          String(g(r, '상태') || '대기'),
     };
   });
 }
@@ -350,7 +448,7 @@ function nextCode(sheet, start) {
   var max = 0;
   if (last >= 2) {
     sheet.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) {
-      var m = /^CS-(\d+)$/.exec(String(r[0]).trim());
+      var m = /^CS-(\d+)$/.exec(String(r[0]).trim());   // 예약번호는 항상 첫 열
       if (m) max = Math.max(max, Number(m[1]));
     });
   }

@@ -271,6 +271,14 @@
   /* 가격이 아직 정해지지 않은 세트는 담을 수 없습니다. */
   var priceReady = function (p) { return typeof p.price === 'number' && p.price > 0; };
 
+  /* 남은 수량. 한도를 정하지 않았으면 null(제한 없음)을 돌려줍니다.
+     sold 는 매장에서 이미 팔린 수량으로, 저장소가 알려줍니다. */
+  var soldMap = {};
+  function leftOf(p) {
+    if (typeof p.stock !== 'number' || p.stock < 0) return null;
+    return Math.max(0, p.stock - (Number(soldMap[p.id]) || 0));
+  }
+
   function renderProducts() {
     var list = $('productList');
     list.innerHTML = '';
@@ -279,8 +287,10 @@
       qty[p.id] = 0;
 
       var pending = !priceReady(p);
+      var left = leftOf(p);
+      var soldOut = p.soldOut || left === 0;
       var row = document.createElement('div');
-      row.className = 'product' + (p.soldOut || pending ? ' product--out' : '');
+      row.className = 'product' + (soldOut || pending ? ' product--out' : '');
 
       /* 상품 사진. 파일이 없으면 조용히 숨겨서 빈 칸이 남지 않게 합니다. */
       if (p.image) {
@@ -306,7 +316,7 @@
       var name = document.createElement('p');
       name.className = 'product__name';
       name.textContent = p.name;
-      if (p.soldOut) {
+      if (soldOut) {
         name.insertAdjacentHTML('beforeend', ' <span class="badge badge--out">품절</span>');
       } else if (pending) {
         name.insertAdjacentHTML('beforeend', ' <span class="badge badge--out">준비 중</span>');
@@ -332,6 +342,14 @@
       }
 
       /* 가격과 수량 버튼을 한 줄에 둡니다. 설명 글이 넓게 쓰이도록. */
+      /* 얼마 안 남았으면 알려줍니다 */
+      if (!soldOut && !pending && left !== null && left <= 10) {
+        var leftEl = document.createElement('p');
+        leftEl.className = 'product__left';
+        leftEl.textContent = left + '개 남았습니다';
+        body.appendChild(leftEl);
+      }
+
       var foot = document.createElement('div');
       foot.className = 'product__foot';
 
@@ -344,7 +362,7 @@
       body.appendChild(foot);
       row.appendChild(body);
 
-      if (!p.soldOut && !pending && !isLocked()) {
+      if (!soldOut && !pending && !isLocked()) {
         var ctrl = document.createElement('div');
         ctrl.className = 'qty';
 
@@ -366,12 +384,13 @@
         plus.textContent = '+';
         plus.setAttribute('aria-label', p.name + ' 수량 늘리기');
 
+        var cap = left === null ? 99 : Math.min(99, left);
         var step = function (delta) {
-          var next = Math.min(99, Math.max(0, qty[p.id] + delta));
+          var next = Math.min(cap, Math.max(0, qty[p.id] + delta));
           qty[p.id] = next;
           num.textContent = String(next);
           minus.disabled = next === 0;
-          plus.disabled = next === 99;
+          plus.disabled = next >= cap;
           renderSummary();
           renderNote();
         };
@@ -584,10 +603,39 @@
     $('cashNo').maxLength = biz ? 12 : 13;
   }
 
+  /* ---------- 개인정보 동의 ---------- */
+
+  function renderConsent() {
+    var pv = CONFIG.privacy || {};
+    var box = $('consentBox');
+    if (!pv.required) { box.hidden = true; return; }
+    box.hidden = false;
+
+    var d = $('agreeDetail');
+    d.innerHTML = '';
+    var dl = document.createElement('dl');
+    (pv.items || []).forEach(function (pair) {
+      var dt = document.createElement('dt');
+      dt.textContent = pair[0];
+      var dd = document.createElement('dd');
+      dd.textContent = pair[1];
+      dl.append(dt, dd);
+    });
+    d.appendChild(dl);
+    if (pv.refusal) {
+      var note = document.createElement('p');
+      note.textContent = pv.refusal;
+      d.appendChild(note);
+    }
+  }
+
+  var needAgree = function () { return !!(CONFIG.privacy && CONFIG.privacy.required); };
+
   /* ---------- 검사 ---------- */
 
   var ERROR_IDS = ['errProducts', 'errPickupDate', 'errPickupTime', 'errName', 'errPhone',
-                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errCash', 'errSubmit'];
+                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errCash',
+                   'errAgree', 'errSubmit'];
 
   function clearErrors() {
     ERROR_IDS.forEach(function (id) { var el = $(id); if (el) el.hidden = true; });
@@ -600,6 +648,7 @@
     phone:          'errPhone',
     receiverName:   'errReceiverName',
     receiverPhone:  'errReceiverPhone',
+    agree:          'errAgree',
     cashNo:         'errCash',
     cashTypeChips:  'errCash',
     postcode:       'errAddress',
@@ -654,6 +703,8 @@
       mark('errAddress', !($('postcode').value.trim() && $('address1').value.trim()), $('postcode'));
     }
 
+    if (needAgree()) mark('errAgree', !$('agree').checked, $('consentBox'));
+
     if (bad.length) bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
     return bad.length === 0;
   }
@@ -689,8 +740,14 @@
       itemsPrice:  price,
       shippingFee: fee,                       // null 이면 미정
       totalPrice:  price + (fee || 0),
-      receiverName: '', receiverPhone: '', address: '',
+      receiverName: '', receiverPhone: '', address: '', depositor: '',
       cashReceipt: '',
+      agreed: needAgree() ? '동의' : '',
+      /* 저장소가 팔린 수량을 셀 수 있도록 기계가 읽기 쉬운 형태로도 담습니다 */
+      itemCounts: items.map(function (i) { return i.id + ':' + i.count; }).join('|'),
+      stockLimits: (CONFIG.products || []).filter(function (x) {
+        return typeof x.stock === 'number';
+      }).map(function (x) { return x.id + ':' + x.stock; }).join('|'),
       pickupDate: '', pickupDateLabel: '', pickupTime: '',
     };
 
@@ -703,6 +760,7 @@
       o.pickupDateLabel = labelOf(CONFIG.pickup.dates, o.pickupDate);
       o.pickupTime = picked('pickupTime');
     } else {
+      o.depositor = $('depositor').value.trim() || o.name;
       o.receiverName = $('receiverName').value.trim();
       o.receiverPhone = $('receiverPhone').value.trim();
       o.address = ['[' + $('postcode').value.trim() + ']',
@@ -869,6 +927,9 @@
       rows.push(['수령일시', order.pickupDateLabel + ' ' + order.pickupTime]);
     } else {
       rows.push(['주문자', order.name]);
+      if (order.depositor && order.depositor !== order.name) {
+        rows.push(['입금자명', order.depositor]);
+      }
       rows.push(['받는 분', order.receiverName + ' · ' + order.receiverPhone]);
       rows.push(['배송지', order.address]);
       rows.push(['발송 일정', order.pickupDateLabel]);
@@ -965,6 +1026,13 @@
     renderChips('pickupTimeChips', 'pickupTime',
       ((CONFIG.pickup && CONFIG.pickup.times) || []).map(function (t) {
         return { value: t, label: t }; }));
+
+    renderConsent();
+    $('agreeMore').addEventListener('click', function () {
+      var d = $('agreeDetail');
+      d.hidden = !d.hidden;
+      $('agreeMore').textContent = d.hidden ? '내용 보기' : '접기';
+    });
 
     renderChips('cashTypeChips', 'cashType',
       CASH_TYPES.map(function (t) { return { value: t, label: t }; }));
