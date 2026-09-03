@@ -176,6 +176,13 @@ body {
 
 .error { color: var(--danger); font-size: 13px; margin: 8px 0 0; }
 
+/* 손님이 고르지 않고 매장이 정하는 항목의 안내 문구 */
+.ship-note {
+  margin: 0; padding: 12px 15px; border-radius: 12px;
+  background: var(--green-soft); color: var(--green-text);
+  font-size: 14px; font-weight: 600;
+}
+
 /* ---------- 합계 · 제출 ---------- */
 .summary { padding: 20px; }
 .summary__row {
@@ -242,6 +249,8 @@ body {
 }
 .banner--warn   { background: var(--blue-soft);  border-color: #cbe7f7; color: var(--blue-text); }
 .banner--closed { background: #fbeeec; border-color: #f0d2ce; color: var(--danger); }
+
+.banner--soon   { background: var(--green-soft); border-color: var(--green-line); color: var(--green-text); }
 
 /* 구글 시트 연결 전 · 손님에게 링크를 뿌리면 안 되는 상태 */
 .banner--demo {

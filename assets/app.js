@@ -26,13 +26,28 @@
            String(d.getDate()).padStart(2, '0');
   }
 
-  function daysLeft() {
-    if (!CONFIG.closeDate) return Infinity;
-    return Math.round((new Date(CONFIG.closeDate + 'T00:00:00') -
+  function daysUntil(iso) {
+    if (!iso) return null;
+    return Math.round((new Date(iso + 'T00:00:00') -
                        new Date(todayStr() + 'T00:00:00')) / 86400000);
   }
 
-  var isClosed = function () { return daysLeft() < 0; };
+  /* 마감일까지 남은 날. 마감일 당일은 0 이고, 지나면 음수가 됩니다. */
+  function daysLeft() {
+    var d = daysUntil(CONFIG.closeDate);
+    return d === null ? Infinity : d;
+  }
+
+  /* 예약 시작 전이면 남은 날 수, 이미 시작했으면 0 이하 */
+  function daysToOpen() {
+    var d = daysUntil(CONFIG.openDate);
+    return d === null ? 0 : d;
+  }
+
+  var isBeforeOpen = function () { return daysToOpen() > 0; };
+  var isClosed     = function () { return daysLeft() < 0; };
+  /* 신청을 받을 수 없는 상태 (시작 전이거나 마감 후) */
+  var isLocked     = function () { return isBeforeOpen() || isClosed(); };
 
   /* '2026-09-20' → '9월 20일' */
   function korDate(iso) {
@@ -61,7 +76,11 @@
     var meta = $('heroMeta');
     var lines = [];
     if (s.name) lines.push(s.name + ' 사전 예약');
-    if (CONFIG.closeDate) lines.push('예약 마감  ' + korDate(CONFIG.closeDate) + ' 까지');
+    if (CONFIG.openDate && CONFIG.closeDate) {
+      lines.push('예약 기간  ' + korDate(CONFIG.openDate) + ' ~ ' + korDate(CONFIG.closeDate));
+    } else if (CONFIG.closeDate) {
+      lines.push('예약 마감  ' + korDate(CONFIG.closeDate) + ' 까지');
+    }
     var ways = [];
     if (enabled('pickup')) ways.push('매장 픽업');
     if (enabled('delivery')) ways.push('택배 발송');
@@ -108,7 +127,11 @@
     var box = $('banner');
     var left = daysLeft();
 
-    if (isClosed()) {
+    if (isBeforeOpen()) {
+      box.innerHTML = '<div class="banner banner--soon">' +
+        '<strong>예약은 ' + korDate(CONFIG.openDate) + '부터 시작됩니다.</strong><br>' +
+        '(' + daysToOpen() + '일 남음) 그때 다시 찾아와 주세요.</div>';
+    } else if (isClosed()) {
       box.innerHTML = '<div class="banner banner--closed">' +
         '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.' +
         (contactLine() ? '<br>' + contactLine() : '') + '</div>';
@@ -170,7 +193,7 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'method';
-      btn.disabled = isClosed();
+      btn.disabled = isLocked();
 
       var icon = document.createElement('span');
       icon.className = 'method__icon';
@@ -210,6 +233,9 @@
     $('ordererHint').textContent = isPickup
       ? '준비가 완료되면 이 번호로 연락드립니다.'
       : '입금 확인과 발송 안내를 이 번호로 드립니다.';
+
+    var ship = $('shipNote');
+    if (ship) ship.textContent = (CONFIG.delivery && CONFIG.delivery.shipPeriod) || '';
 
     $('modeBadge').textContent = METHODS[m].icon + ' ' + METHODS[m].label;
     $('modeDesc').textContent = isPickup ? '매장에서 직접 수령' : '주소로 보내드림';
@@ -269,7 +295,7 @@
 
       row.appendChild(body);
 
-      if (!p.soldOut && !isClosed()) {
+      if (!p.soldOut && !isLocked()) {
         var ctrl = document.createElement('div');
         ctrl.className = 'qty';
 
@@ -453,7 +479,7 @@
   /* ---------- 검사 ---------- */
 
   var ERROR_IDS = ['errProducts', 'errPickupDate', 'errPickupTime', 'errName', 'errPhone',
-                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errShipDate', 'errSubmit'];
+                   'errReceiverName', 'errReceiverPhone', 'errAddress', 'errSubmit'];
 
   function clearErrors() {
     ERROR_IDS.forEach(function (id) { var el = $(id); if (el) el.hidden = true; });
@@ -471,7 +497,6 @@
     address2:       'errAddress',
     pickupDateChips: 'errPickupDate',
     pickupTimeChips: 'errPickupTime',
-    shipDateChips:   'errShipDate',
     productList:     'errProducts',
   };
 
@@ -511,7 +536,6 @@
       mark('errReceiverName', !$('receiverName').value.trim(), $('receiverName'));
       mark('errReceiverPhone', !validPhone($('receiverPhone').value.trim()), $('receiverPhone'));
       mark('errAddress', !($('postcode').value.trim() && $('address1').value.trim()), $('postcode'));
-      mark('errShipDate', !picked('shipDate'), $('shipDateChips'));
     }
 
     if (bad.length) bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -557,8 +581,8 @@
       o.address = ['[' + $('postcode').value.trim() + ']',
                    $('address1').value.trim(),
                    $('address2').value.trim()].filter(Boolean).join(' ');
-      o.pickupDate = picked('shipDate');
-      o.pickupDateLabel = labelOf(CONFIG.delivery.dates, o.pickupDate);
+      o.pickupDate = '';                                   // 발송일은 매장이 순차로 정합니다
+      o.pickupDateLabel = (CONFIG.delivery && CONFIG.delivery.shipPeriod) || '';
     }
     return o;
   }
@@ -716,7 +740,7 @@
 
   function onSubmit(e) {
     e.preventDefault();
-    if (submitting || isClosed() || !mode) return;
+    if (submitting || isLocked() || !mode) return;
     if (!validate()) return;
 
     submitting = true;
@@ -754,9 +778,6 @@
     renderChips('pickupTimeChips', 'pickupTime',
       ((CONFIG.pickup && CONFIG.pickup.times) || []).map(function (t) {
         return { value: t, label: t }; }));
-    renderChips('shipDateChips', 'shipDate',
-      ((CONFIG.delivery && CONFIG.delivery.dates) || []).map(function (d) {
-        return { value: d.date, label: d.label }; }));
 
     setupAddress();
     watchErrors();
@@ -781,10 +802,12 @@
       $('changeMode').hidden = true;
     }
 
-    if (isClosed()) {
+    if (isLocked()) {
       var btn = $('submitBtn');
       btn.disabled = true;
-      btn.textContent = '예약이 마감되었습니다';
+      btn.textContent = isBeforeOpen()
+        ? korDate(CONFIG.openDate) + '부터 예약할 수 있습니다'
+        : '예약이 마감되었습니다';
       $('form').querySelectorAll('input, textarea').forEach(function (el) { el.disabled = true; });
     }
   }

@@ -34,7 +34,8 @@
 - [x] 직원용 목록 — 픽업·택배 구분, 검색·필터, 상태 넘기기, 엑셀 저장
 - [x] 디자인 (연두·하늘색 파스텔, Pretendard)
 - [x] 저장소 공개 전환 + GitHub Pages → main 에 올리면 자동 반영
-- [x] 매장 정보 (전화 0507-1356-0933, 마포구 광성로6안길 6 1층, @cafe.hawfinch)
+- [x] 매장 정보 (마포구 광성로6안길 6 1층, @cafe.hawfinch)
+- [x] 일정 — 예약 9/6~9/12, 택배 9/16~18 순차 발송, 픽업 9/21~9/24
 
 ### 남은 것
 
@@ -159,16 +160,17 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 하고 싶은 일 | 바꿀 곳 |
 | --- | --- |
 | 매장 이름·전화·주소 | `shop` |
+| 예약 시작일 변경 | `openDate` (이 날짜 전에는 신청이 잠깁니다) |
 | 예약 마감일 변경 | `closeDate` |
 | 세트 가격·이름 수정 | `products` 안의 `name`, `price`, `desc` |
 | 세트 추가 | `products` 안의 `{ ... }` 한 덩어리를 복사해 붙여넣고 내용 수정 |
 | 품절 처리 | 해당 세트의 `soldOut: false` → `soldOut: true` |
 | 픽업 날짜·시간 | `pickup.dates`, `pickup.times` |
+| 택배 발송 일정 문구 | `delivery.shipPeriod` |
 | 픽업을 아예 안 받기 | `pickup.enabled: false` |
 | **배송비 정하기** | `delivery.fee` 에 숫자 입력 (예: `3000`) |
 | 얼마 이상 무료배송 | `delivery.freeOver` 에 기준 금액 (예: `50000`) |
 | **입금 계좌 넣기** | `delivery.bank` 의 `bankName`, `account`, `holder` |
-| 발송 희망일 목록 | `delivery.dates` |
 | 택배를 아예 안 받기 | `delivery.enabled: false` |
 
 > 픽업과 택배 중 하나만 `enabled: true` 로 두면, 고르는 첫 화면을

@@ -82,7 +82,7 @@ function createOrder(body) {
     if (!receiverName) throw new Error('받는 분 성함이 비어 있습니다.');
     if (!isPhone(receiverPhone)) throw new Error('받는 분 연락처 형식이 올바르지 않습니다.');
     if (!address) throw new Error('배송지 주소가 비어 있습니다.');
-    if (!day) throw new Error('발송 희망일이 비어 있습니다.');
+    /* 발송일은 손님이 고르지 않고 매장이 순차로 정하므로 비어 있어도 됩니다. */
   }
 
   /* 배송비: 값이 없으면(미정) 빈 칸으로 남기고 합계에 넣지 않습니다. */
