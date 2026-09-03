@@ -167,6 +167,7 @@
         items.push('배송비는 아직 확정되지 않아 합계에서 빠져 있습니다. 매장에서 함께 안내드립니다.');
       }
     }
+    items.push('진행 상황은 예약 확인 페이지에서 직접 보실 수 있습니다. 따로 연락드리지 않습니다.');
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
     var contact = contactLine();
     items.push(contact ? '예약 변경·취소 문의 — ' + contact
@@ -235,9 +236,10 @@
 
     $('ordererStep').textContent = isPickup ? '3' : '2';
     $('ordererTitle').textContent = isPickup ? '예약자 정보' : '주문자 정보';
+    /* 매장에서 따로 연락드리지 않으므로, 연락처의 쓰임을 사실대로 적습니다. */
     $('ordererHint').textContent = isPickup
-      ? '준비가 완료되면 이 번호로 연락드립니다.'
-      : '입금 확인과 발송 안내를 이 번호로 드립니다.';
+      ? '픽업하실 때 예약을 확인하는 데 사용됩니다.'
+      : '주문 확인에 사용되며, 문제가 있을 때만 연락드립니다.';
 
     $('memoField').hidden = !CONFIG.showMemo;
     $('cashField').hidden = !cashOn();
@@ -793,7 +795,7 @@
     var lead = document.createElement('p');
     lead.className = 'done__text';
     lead.textContent = order.method === 'pickup'
-      ? '준비가 완료되면 문자 또는 전화로 안내드리겠습니다.'
+      ? '아래 예약번호를 저장해 두시고, 수령일에 매장으로 오시면 됩니다.'
       : '아래 계좌로 입금해 주시면 확인 후 발송해 드립니다.';
     box.appendChild(lead);
 
