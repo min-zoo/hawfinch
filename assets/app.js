@@ -90,10 +90,16 @@
         (left === 0 ? '오늘' : left + '일') + ' 남았습니다.</strong></div>';
     }
 
+    /* 구글 시트를 연결하기 전에는 예약이 매장으로 가지 않습니다.
+       실수로 손님에게 링크를 뿌리는 일이 없도록 크게 알립니다. */
     if (!CONFIG.sheetUrl) {
       box.insertAdjacentHTML('beforeend',
-        '<div class="banner banner--warn">연습 모드입니다. ' +
-        '이 예약은 매장으로 전송되지 않고 이 기기에만 저장됩니다.</div>');
+        '<div class="banner banner--demo">' +
+        '<span class="banner__mark">준비 중</span>' +
+        '<strong>아직 손님에게 이 링크를 보내지 마세요.</strong>' +
+        '<span>구글 시트가 연결되지 않아, 지금 넣은 예약은 매장으로 전달되지 않고 ' +
+        '이 기기에만 저장됩니다. 화면을 미리 확인하는 용도로만 사용해 주세요.</span>' +
+        '</div>');
     }
   }
 

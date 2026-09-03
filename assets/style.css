@@ -241,6 +241,19 @@ body {
 .banner--warn   { background: var(--blue-soft);  border-color: #cbe7f7; color: var(--blue-text); }
 .banner--closed { background: #fbeeec; border-color: #f0d2ce; color: var(--danger); }
 
+/* 구글 시트 연결 전 · 손님에게 링크를 뿌리면 안 되는 상태 */
+.banner--demo {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px 18px; line-height: 1.55;
+  background: #fdf4f2; border-color: #eab5ac; color: #8e3a2c;
+}
+.banner--demo strong { font-size: 14px; color: #8e3a2c; }
+.banner__mark {
+  align-self: flex-start; padding: 3px 10px; border-radius: 999px;
+  background: var(--danger); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+}
+
 /* ---------- 수령 방법 고르기 ---------- */
 .methods { display: grid; gap: 12px; }
 
