@@ -107,7 +107,7 @@ const CONFIG = {
       price: 13000,
       stock: null,                       // 만들 수 있는 최대 수량. null 이면 제한 없음
       image: 'assets/products/set-1.jpg',                         // 예: 'assets/products/set-1.jpg' · 비우면 사진 없이 표시
-      desc: '쇼콜라아망드 2ea · 바닐라 3ea · 호지 2ea · 말차 2ea · 헤이즐넛쿠키 3ea · 새쿠키 1ea',
+      desc: '새쿠키 1ea · 헤이즐넛쿠키 3ea · 바닐라비엔누아 3ea · 호지비엔누아 3ea · 말차사브레 2ea · 쇼콜라아망드 2ea',
       note: '',                          // 구성 아래 작게 붙는 한 줄. 비워두면 표시되지 않습니다
       badge: '',
       soldOut: false,
@@ -118,7 +118,7 @@ const CONFIG = {
       price: 36000,
       stock: null,                       // 예: 50 → 50개까지만 받고 자동으로 품절 처리
       image: 'assets/products/set-2.jpg',
-      desc: '사브레 3종 각 2ea (버터·초코·말차) · 메밀현미스노우볼 5ea · 고양이쿠키 5ea · 레몬쇼트사브레 5ea · 참깨쿠키 5ea',
+      desc: '버터사브레 2ea · 초코사브레 2ea · 말차사브레 2ea · 레몬쇼트브레드 3ea · 고양이쿠키 5ea · 메밀현미볼 6ea · 바닐라 라즈베리잼쿠키 4ea · 쇼콜라아망드 5ea · 참깨비스킷 5ea',
       note: '',
       badge: '',
       soldOut: false,
