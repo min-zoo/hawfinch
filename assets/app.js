@@ -21,10 +21,25 @@
                 descOnsite: '원하는 주소로 보내는 방법입니다.' },
   };
 
-  /* 선입금이냐 현장 결제냐에 따라 설명이 달라집니다. */
+  /* 배송비 안내 한 줄. config.js 의 delivery.fee / freeOver 를 그대로 읽습니다. */
+  function feeLine() {
+    var d = CONFIG.delivery || {};
+    if (typeof d.fee !== 'number') return '배송비는 별도 안내';
+    if (d.fee === 0) return '배송비 무료';
+    var t = '배송비 ' + won(d.fee);
+    if (typeof d.freeOver === 'number' && d.freeOver > 0) {
+      var man = d.freeOver % 10000 === 0 ? (d.freeOver / 10000) + '만원' : won(d.freeOver);
+      t += ' · ' + man + ' 이상 무료';
+    }
+    return t;
+  }
+
+  /* 선입금이냐 현장 결제냐에 따라 설명이 달라집니다. 택배는 배송비도 함께. */
   function methodDesc(key) {
     var m = METHODS[key];
-    return HF.prepay(key) ? m.desc : (m.descOnsite || m.desc);
+    var t = HF.prepay(key) ? m.desc : (m.descOnsite || m.desc);
+    if (key === 'delivery') t += ' ' + feeLine();
+    return t;
   }
 
   /* ---------- 날짜 도우미 ---------- */
