@@ -115,7 +115,7 @@ const CONFIG = {
     {
       id: 'set-2',
       name: '틴케이스쿠키',
-      price: 38000,
+      price: 36000,
       stock: null,                       // 예: 50 → 50개까지만 받고 자동으로 품절 처리
       image: 'assets/products/set-2.jpg',
       desc: '버터사브레 2ea · 초코사브레 2ea · 말차사브레 2ea · 레몬쇼트브레드 3ea · 고양이쿠키 5ea · 메밀현미볼 6ea · 바닐라 라즈베리잼쿠키 4ea · 쇼콜라아망드 5ea · 참깨비스킷 5ea',
