@@ -627,4 +627,4 @@ tbody tr.is-void td:first-child { text-decoration: line-through; }
 .order-edit .order-actions__row { margin-top: 16px; }
 
 /* 택배 카드의 배송비 줄 */
-.method__fee { margin-top: 4px; font-weight: 600; color: var(--ink); }
+.method__fee { margin-top: 4px; font-weight: 500; color: var(--ink-soft); }
