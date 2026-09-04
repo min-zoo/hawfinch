@@ -182,6 +182,7 @@
     }
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
     items.push(changeRule());
+    if (CONFIG.holidayNotice) items.push(CONFIG.holidayNotice);
 
     box.innerHTML = '<strong>예약 안내</strong><ul>' +
       items.map(function (t) {

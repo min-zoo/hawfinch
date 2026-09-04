@@ -211,6 +211,7 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 품절 처리 | 해당 세트의 `soldOut: false` → `soldOut: true` |
 | **수량 한도** | 해당 세트의 `stock` 에 숫자 (예: `50` → 50개까지만 받고 자동 품절) |
 | 개인정보 동의 문구 | `privacy.items` (보관 기간: 예약 종료 후 1개월) |
+| 예약 안내 마지막 줄 (휴무 안내) | `holidayNotice` |
 | 픽업 손님 변경·취소 기한 | `customerChange.pickupDaysBefore` (지금 수령일 3일 전) |
 | 택배 손님 변경·취소 기한 | `customerChange.deliveryUntil` (지금 9월 12일) |
 | 손님 직접 변경·취소 끄기 | `customerChange.enabled: false` |
