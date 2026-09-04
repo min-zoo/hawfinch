@@ -37,9 +37,7 @@
   /* 선입금이냐 현장 결제냐에 따라 설명이 달라집니다. 택배는 배송비도 함께. */
   function methodDesc(key) {
     var m = METHODS[key];
-    var t = HF.prepay(key) ? m.desc : (m.descOnsite || m.desc);
-    if (key === 'delivery') t += ' ' + feeLine();
-    return t;
+    return HF.prepay(key) ? m.desc : (m.descOnsite || m.desc);
   }
 
   /* ---------- 날짜 도우미 ---------- */
@@ -236,6 +234,12 @@
       desc.className = 'method__desc';
       desc.textContent = methodDesc(key);
       body.append(name, desc);
+      if (key === 'delivery') {                      // 배송비는 따로 한 줄
+        var fee = document.createElement('span');
+        fee.className = 'method__desc method__fee';
+        fee.textContent = feeLine();
+        body.appendChild(fee);
+      }
 
       var arrow = document.createElement('span');
       arrow.className = 'method__arrow';
