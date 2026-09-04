@@ -197,7 +197,7 @@ function createOrder(body) {
     for (var k = 0; k < HEADERS.length; k++) if (row[k] === undefined) row[k] = '';
     sheet.appendRow(row);
 
-    notifyNewOrder(code, method, name, parts.join(', '), total);
+    notifyNewOrder(code, method, row, parts.join(', '), total);
     return { ok: true, code: code };
   } finally {
     lock.releaseLock();
@@ -294,15 +294,24 @@ function parsePairs(text) {
 
 
 /** 새 예약이 들어오면 알려줍니다. 실패해도 예약 접수는 그대로 진행됩니다. */
-function notifyNewOrder(code, method, name, itemsText, total) {
+function notifyNewOrder(code, method, row, itemsText, total) {
+  var g = function (name) { return String(row[col(name)] || ''); };
   var way = method === 'pickup' ? '픽업' : '택배';
-  notify('새 예약 ' + code + ' · ' + way, [
+  var lines = [
     '예약번호 : ' + code,
     '수령방법 : ' + (method === 'pickup' ? '매장 픽업' : '택배 발송'),
-    '주문자   : ' + name,
-    '주문내역 : ' + itemsText,
-    '합계     : ' + Number(total).toLocaleString('ko-KR') + '원',
-  ]);
+    '주문자   : ' + g('주문자') + ' · ' + g('주문자연락처'),
+  ];
+  if (method === 'pickup') {
+    lines.push('수령일시 : ' + g('수령일표시') + ' ' + g('수령시간'));
+  } else {
+    lines.push('받는 분  : ' + g('받는분') + ' · ' + g('받는분연락처'));
+    lines.push('배송지   : ' + g('배송지주소'));
+  }
+  lines.push('주문내역 : ' + itemsText);
+  if (g('현금영수증')) lines.push('현금영수증 : ' + g('현금영수증'));
+  lines.push('입금할 금액 : ' + Number(total).toLocaleString('ko-KR') + '원');
+  notify('새 예약 ' + code + ' · ' + way + ' · ' + g('주문자'), lines);
 }
 
 /**
