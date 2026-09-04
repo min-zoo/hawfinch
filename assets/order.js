@@ -230,7 +230,7 @@
       return;
     }
 
-    msg.textContent = (delivery ? '' : '수령일 ' + limit.days + '일 전인 ') +
+    msg.textContent = (limit.fixed ? '' : '수령일 ' + limit.days + '일 전인 ') +
                       korDate(limit.until) + '까지 직접 변경·취소하실 수 있습니다.';
     wrap.appendChild(msg);
 
@@ -274,6 +274,7 @@
       action: 'customer', code: current.code, phone: phoneUsed,
       /* 기한 계산에 필요한 값. 서버가 다시 검사합니다. */
       pickupDaysBefore: (CONFIG.customerChange || {}).pickupDaysBefore,
+      pickupUntil: (CONFIG.customerChange || {}).pickupUntil,
       deliveryUntil: (CONFIG.customerChange || {}).deliveryUntil,
     }, payload);
     return fetch(CONFIG.sheetUrl, {

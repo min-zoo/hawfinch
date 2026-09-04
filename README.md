@@ -142,7 +142,7 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
    없습니다 (다른 이름으로 입금하면 대조가 안 되기 때문입니다).
 7. **예약 확인**(`order.html`) 에서 예약번호 + 연락처로 조회하면 손님이
    직접 **수령일·시간(픽업) / 받는 분·주소(택배)를 바꾸거나 예약을 취소**할
-   수 있습니다. 픽업은 수령일 3일 전, 택배는 9월 12일까지만 됩니다. 세트·수량은 바꿀 수 없고, 입금 전이면 취소 후 다시 예약하도록
+   수 있습니다. 픽업·택배 모두 9월 13일까지만 됩니다. 세트·수량은 바꿀 수 없고, 입금 전이면 취소 후 다시 예약하도록
    안내합니다. 손님이 바꾸거나 취소하면 직원 목록의 **요청사항** 칸에
    `[9/3 14:20 손님 변경: …]` 처럼 남고, 취소는 **취소사유**에
    `손님 직접 취소`로 기록됩니다. (입금 완료 뒤 취소하면 `환불 필요`가
@@ -212,8 +212,8 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | **수량 한도** | 해당 세트의 `stock` 에 숫자 (예: `50` → 50개까지만 받고 자동 품절) |
 | 개인정보 동의 문구 | `privacy.items` (보관 기간: 예약 종료 후 1개월) |
 | 예약 안내 마지막 줄 (휴무 안내) | `holidayNotice` |
-| 픽업 손님 변경·취소 기한 | `customerChange.pickupDaysBefore` (지금 수령일 3일 전) |
-| 택배 손님 변경·취소 기한 | `customerChange.deliveryUntil` (지금 9월 12일) |
+| 픽업 손님 변경·취소 기한 | `customerChange.pickupUntil` (지금 9월 13일) |
+| 택배 손님 변경·취소 기한 | `customerChange.deliveryUntil` (지금 9월 13일) |
 | 손님 직접 변경·취소 끄기 | `customerChange.enabled: false` |
 | 픽업 날짜·시간 | `pickup.dates`, `pickup.times` |
 | 요청사항 칸 다시 넣기 | `showMemo` 를 `true` 로 (지금은 꺼져 있습니다) |

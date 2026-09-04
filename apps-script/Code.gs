@@ -405,9 +405,9 @@ function updateStatus(body) {
 
 /* 손님이 직접 바꿀 수 있는 마지막 날의 기본값.
    화면(config.js 의 customerChange)이 값을 보내오면 그것을 쓰고, 없으면 여기 값을 씁니다.
-     pickupDaysBefore : 픽업은 수령일 며칠 전까지
+     pickupUntil      : 픽업은 이 날까지 (비우면 수령일에서 pickupDaysBefore 만큼 앞)
      deliveryUntil    : 택배는 이 날까지 */
-var CUSTOMER_EDIT = { pickupDaysBefore: 3, deliveryUntil: '2026-09-12' };
+var CUSTOMER_EDIT = { pickupUntil: '2026-09-13', pickupDaysBefore: 3, deliveryUntil: '2026-09-13' };
 var CUSTOMER_EDITABLE = ['대기', '입금확인'];   // 이 상태일 때만 손님이 손댈 수 있습니다
 
 /**
@@ -435,6 +435,9 @@ function customerEdit(body) {
   var ref, back;
   if (order.method === 'delivery') {
     ref = isoRe.test(trim(body.deliveryUntil)) ? trim(body.deliveryUntil) : CUSTOMER_EDIT.deliveryUntil;
+    back = 0;
+  } else if (isoRe.test(trim(body.pickupUntil)) || CUSTOMER_EDIT.pickupUntil) {
+    ref = isoRe.test(trim(body.pickupUntil)) ? trim(body.pickupUntil) : CUSTOMER_EDIT.pickupUntil;
     back = 0;
   } else {
     ref = order.pickupDate;

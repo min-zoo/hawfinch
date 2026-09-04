@@ -77,6 +77,8 @@ var HF = (function () {
     if (method === 'delivery') {
       if (!iso.test(String(c.deliveryUntil || ''))) return null;
       until = c.deliveryUntil;
+    } else if (iso.test(String(c.pickupUntil || ''))) {
+      until = c.pickupUntil;                       // 픽업도 정해진 날짜까지
     } else {
       var m = iso.exec(String(pickupDate || ''));
       if (!m) return null;
@@ -86,17 +88,19 @@ var HF = (function () {
               String(d.getMonth() + 1).padStart(2, '0') + '-' +
               String(d.getDate()).padStart(2, '0');
     }
-    return { until: until, days: days, open: todayIso() <= until };
+    return { until: until, days: days, fixed: method === 'delivery' || iso.test(String(c.pickupUntil || '')),
+             open: todayIso() <= until };
   }
 
   /* 변경·취소 규칙을 손님에게 설명하는 한 줄 */
   function changeRuleText(method) {
     var c = (typeof CONFIG !== 'undefined' && CONFIG.customerChange) || {};
     var days = typeof c.pickupDaysBefore === 'number' ? c.pickupDaysBefore : 3;
-    var pick = '수령일 ' + days + '일 전까지';
+    var pick = c.pickupUntil ? korDate(c.pickupUntil) + '까지' : '수령일 ' + days + '일 전까지';
     var deli = c.deliveryUntil ? korDate(c.deliveryUntil) + '까지' : '';
     if (method === 'pickup') return pick;
     if (method === 'delivery') return deli;
+    if (pick === deli) return pick;
     return '픽업은 ' + pick + ', 택배는 ' + deli;
   }
 
