@@ -460,9 +460,9 @@ function customerEdit(body) {
     set('상태', '취소');
     set('취소일시', Utilities.formatDate(new Date(), tz(), 'yyyy-MM-dd HH:mm'));
     set('취소사유', '손님 직접 취소' + (status === '입금확인' ? ' (입금 완료 상태 · 환불 필요)' : ''));
-    notify('손님 취소 ' + order.code + (status === '입금확인' ? ' · 환불 필요' : ''), [
+    notify('손님 취소 ' + order.code + ' · ' + order.name + (status === '입금확인' ? ' · 환불 필요' : ''), [
       '예약번호 : ' + order.code,
-      '주문자   : ' + order.name,
+      '주문자   : ' + order.name + ' · ' + order.phone,
       '주문내역 : ' + order.itemsText,
       '취소 전 상태 : ' + status,
     ]);
@@ -474,7 +474,14 @@ function customerEdit(body) {
       set('수령일', date);
       set('수령일표시', trim(body.pickupDateLabel).slice(0, 40) || date);
       set('수령시간', time);
-      note('변경: 수령 ' + before + ' → ' + (trim(body.pickupDateLabel) || date) + ' ' + time);
+      var after = (trim(body.pickupDateLabel) || date) + ' ' + time;
+      note('변경: 수령 ' + before + ' → ' + after);
+      notify('손님 변경 ' + order.code + ' · ' + order.name, [
+        '예약번호 : ' + order.code,
+        '주문자   : ' + order.name + ' · ' + order.phone,
+        '수령일시 : ' + before + ' → ' + after,
+        '주문내역 : ' + order.itemsText,
+      ]);
     } else {
       var rn = trim(body.receiverName).slice(0, 30);
       var rp = trim(body.receiverPhone);
@@ -490,6 +497,15 @@ function customerEdit(body) {
       set('받는분연락처', rp);
       set('배송지주소', addr);
       note('변경: ' + (changed.join(' · ') || '내용 같음'));
+      if (changed.length) {
+        notify('손님 변경 ' + order.code + ' · ' + order.name, [
+          '예약번호 : ' + order.code,
+          '주문자   : ' + order.name + ' · ' + order.phone,
+          '바뀐 내용 : ' + changed.join(' · '),
+          '받는 분  : ' + rn + ' · ' + rp,
+          '배송지   : ' + addr,
+        ]);
+      }
     }
   } else {
     throw new Error('알 수 없는 요청입니다.');
