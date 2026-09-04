@@ -345,7 +345,12 @@
         img.loading = 'lazy';
         img.addEventListener('error', function () { thumb.remove(); });
         thumb.appendChild(img);
-        thumb.addEventListener('click', function () { openPhoto(p.image, p.name); });
+        thumb.addEventListener('click', function () {
+          /* 대문 사진 아래에 구성 사진(있으면)을 이어서 보여줍니다 */
+          var shots = [{ src: p.image, caption: p.name }];
+          if (p.detail) shots.push({ src: p.detail, caption: p.name + ' 구성' });
+          openPhoto(shots);
+        });
 
         row.appendChild(thumb);
       }
@@ -468,14 +473,29 @@
   }
 
   /* 사진을 눌렀을 때 크게 보여줍니다. 어두운 배경 아무 데나 누르면 닫힙니다. */
-  function openPhoto(src, alt) {
+  /* shots: [{ src, caption }] — 여러 장이면 위아래로 이어서 보여줍니다 */
+  function openPhoto(shots, alt) {
+    if (typeof shots === 'string') shots = [{ src: shots, caption: alt || '' }];
     var back = document.createElement('div');
-    back.className = 'photo-view';
+    back.className = 'photo-view' + (shots.length > 1 ? ' photo-view--multi' : '');
 
-    var img = document.createElement('img');
-    img.src = src;
-    img.alt = alt || '';
-    back.appendChild(img);
+    var stack = document.createElement('div');
+    stack.className = 'photo-view__stack';
+    shots.forEach(function (s) {
+      var fig = document.createElement('figure');
+      fig.className = 'photo-view__fig';
+      var img = document.createElement('img');
+      img.src = s.src;
+      img.alt = s.caption || '';
+      fig.appendChild(img);
+      if (s.caption) {
+        var cap = document.createElement('figcaption');
+        cap.textContent = s.caption;
+        fig.appendChild(cap);
+      }
+      stack.appendChild(fig);
+    });
+    back.appendChild(stack);
 
     var close = document.createElement('button');
     close.type = 'button';
