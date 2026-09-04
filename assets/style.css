@@ -148,7 +148,9 @@ body {
   font-size: 17px; color: var(--ink); line-height: 1;
 }
 .product__name { font-weight: 700; font-size: 15px; margin: 0 0 4px; color: var(--ink); }
-.product__desc { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.product__desc { margin: 0; font-size: 13px; color: var(--ink-soft);
+  word-break: keep-all;   /* 쿠키 이름 중간에서 줄이 끊기지 않게 */
+}
 .product__note { margin: 0 0 8px; font-size: 12px; color: var(--ink-faint); }
 .product__price { margin: 0; font-size: 16px; font-weight: 700; color: var(--green-text); }
 .product__price--pending { color: var(--ink-faint); font-weight: 600; }
