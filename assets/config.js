@@ -107,7 +107,7 @@ const CONFIG = {
       price: 10500,
       stock: null,                       // 만들 수 있는 최대 수량. null 이면 제한 없음
       image: 'assets/products/set-1.jpg',                         // 예: 'assets/products/set-1.jpg' · 비우면 사진 없이 표시
-      desc: '새쿠키 1ea · 헤이즐넛쿠키 3ea · 바닐라비엔누아 3ea · 호지비엔누아 3ea · 말차사브레 2ea · 쇼콜라아망드 2ea',
+      desc: '새쿠키 1ea · 헤이즐넛쿠키 3ea · 바닐라비엔누아 3ea · 호지비엔누아 3ea · 말차사브레 2ea · 쇼콜라아망드 2ea · 프렌치머랭',
       note: '',                          // 구성 아래 작게 붙는 한 줄. 비워두면 표시되지 않습니다
       badge: '',
       soldOut: false,
