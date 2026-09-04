@@ -83,6 +83,7 @@
     } else if (CONFIG.closeDate) {
       lines.push('예약 마감  ' + korDate(CONFIG.closeDate) + ' 까지');
     }
+    if (CONFIG.periodNote) lines.push(CONFIG.periodNote);
 
     meta.innerHTML = '';
     lines.forEach(function (t) {

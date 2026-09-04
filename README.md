@@ -206,6 +206,7 @@ sheetUrl: 'https://script.google.com/macros/s/....../exec',
 | 예약번호 시작 번호 | `codeStart` (지금 100 → HFC-0100 부터) |
 | 예약 시작일 변경 | `openDate` (이 날짜 전에는 신청이 잠깁니다) |
 | 예약 마감일 변경 | `closeDate` |
+| 예약 기간 아래 한 줄 (조기 마감 안내) | `periodNote` |
 | 세트 가격·이름 수정 | `products` 안의 `name`, `price`, `desc` |
 | 세트 추가 | `products` 안의 `{ ... }` 한 덩어리를 복사해 붙여넣고 내용 수정 |
 | 품절 처리 | 해당 세트의 `soldOut: false` → `soldOut: true` |
