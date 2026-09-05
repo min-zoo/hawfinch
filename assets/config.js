@@ -116,7 +116,7 @@ const CONFIG = {
     {
       id: 'set-2',
       name: '틴케이스쿠키',
-      price: 36000,
+      price: 38000,
       stock: null,                       // 예: 50 → 50개까지만 받고 자동으로 품절 처리
       image: 'assets/products/set-2.jpg',
       detail: 'assets/products/set-2-detail.jpg',
