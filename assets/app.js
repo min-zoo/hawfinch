@@ -77,6 +77,8 @@
   var korDate = HF.korDate;
 
   var enabled = function (key) { return !!(CONFIG[key] && CONFIG[key].enabled); };
+  /* 그 방법만 먼저 마감했는지 (config.js 의 pickup.closed / delivery.closed) */
+  var closedMethod = function (key) { return !!(CONFIG[key] && CONFIG[key].closed); };
 
   /* 미리 입금을 받는 방법인지. config.js 의 pickup.prepay / delivery.prepay 로 정합니다. */
   function isPrepay(m) { return HF.prepay(m || mode); }
@@ -216,10 +218,11 @@
       if (!enabled(key)) return;
       var m = METHODS[key];
 
+      var closed = closedMethod(key);
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'method';
-      btn.disabled = isLocked();
+      btn.className = 'method' + (closed ? ' method--closed' : '');
+      btn.disabled = isLocked() || closed;
 
       var icon = document.createElement('span');
       icon.className = 'method__icon';
@@ -230,11 +233,19 @@
       var name = document.createElement('span');
       name.className = 'method__name';
       name.textContent = m.label;
+      if (closed) {                                  // 마감 딱지
+        var tag = document.createElement('span');
+        tag.className = 'method__closed';
+        tag.textContent = '마감';
+        name.appendChild(tag);
+      }
       var desc = document.createElement('span');
       desc.className = 'method__desc';
-      desc.textContent = methodDesc(key);
+      desc.textContent = closed
+        ? (CONFIG[key].closedNotice || m.label + ' 예약이 마감되었습니다.')
+        : methodDesc(key);
       body.append(name, desc);
-      if (key === 'delivery') {                      // 배송비는 따로 한 줄
+      if (key === 'delivery' && !closed) {           // 배송비는 따로 한 줄
         var fee = document.createElement('span');
         fee.className = 'method__desc method__fee';
         fee.textContent = feeLine();
@@ -254,6 +265,7 @@
   /* 방법을 고르면 브라우저에 '한 단계 들어왔다'고 알려서,
      뒤로가기를 누르면 사이트를 벗어나지 않고 첫 화면으로 돌아오게 합니다. */
   function selectMode(m, fromHistory) {
+    if (closedMethod(m)) return;                     // 마감된 방법은 열리지 않습니다
     if (!fromHistory) {
       try { history.pushState({ view: 'form', mode: m }, ''); } catch (e) {}
     }
