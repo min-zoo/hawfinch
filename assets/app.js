@@ -137,6 +137,33 @@
     if (line2.childNodes.length) info.appendChild(line2);
   }
 
+  /* 마감까지 남은 시간. 마지막 날이면 자정까지 남은 시·분으로 알려줍니다. */
+  function closeMessage(left) {
+    if (left > 1) return '예약 마감까지 ' + left + '일 남았습니다.';
+    if (left === 1) return '내일 자정에 예약이 마감됩니다.';
+
+    var now = new Date();
+    var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);   // 오늘 밤 자정
+    var mins = Math.ceil((end - now) / 60000);
+    if (mins <= 0) return '예약이 마감되었습니다.';
+    if (mins < 60) return '예약 마감까지 ' + mins + '분 남았습니다.';
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return '오늘 자정 마감 · ' + h + '시간' + (m ? ' ' + m + '분' : '') + ' 남았습니다.';
+  }
+
+  /* 마지막 날에만 1분마다 문구를 새로 씁니다. 자정이 지나면 화면을 새로 불러
+     '마감되었습니다' 안내로 바뀌게 합니다. */
+  var countdownTimer = null;
+  function startCountdown() {
+    if (countdownTimer) return;
+    countdownTimer = setInterval(function () {
+      var el = $('closeMsg');
+      if (!el) { clearInterval(countdownTimer); countdownTimer = null; return; }
+      if (isClosed()) { location.reload(); return; }
+      el.textContent = closeMessage(daysLeft());
+    }, 60000);
+  }
+
   function renderBanner() {
     var box = $('banner');
     var left = daysLeft();
@@ -155,10 +182,10 @@
         '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.' +
         (contactLine() ? '<br>' + contactLine() : '') + '</div>';
     } else if (left <= 3 && left !== Infinity) {
-      var msg = left === 0 ? '오늘 예약이 마감됩니다.'
-              : left === 1 ? '내일 예약이 마감됩니다.'
-              : '예약 마감까지 ' + left + '일 남았습니다.';
-      box.innerHTML = '<div class="banner banner--warn"><strong>' + msg + '</strong></div>';
+      /* 마지막 날에는 자정까지 남은 시간을 1분마다 새로 세어 보여줍니다. */
+      box.innerHTML = '<div class="banner banner--warn"><strong id="closeMsg">' +
+        closeMessage(left) + '</strong></div>';
+      startCountdown();
     }
 
     /* 구글 시트를 연결하기 전에는 예약이 매장으로 가지 않습니다.
