@@ -11,18 +11,18 @@
   /* 손님에게는 매장 내부 용어 대신 지금 상황을 그대로 알려줍니다. */
   var STATE = {
     pickup: {
-      '대기':     ['입금 대기 중입니다', '제품은 입금 확인 후 준비됩니다.'],
-      '입금확인': ['입금이 확인되었습니다', '수령일에 매장으로 오시면 됩니다.'],
-      '현장결제': ['예약이 접수되었습니다', '받으러 오실 때 매장에서 결제해 주시면 됩니다.'],
-      '완료':     ['준비 완료', '매장에서 받아가실 수 있습니다.'],
-      '취소':     ['취소된 예약입니다', '문의가 필요하시면 매장으로 연락 주세요.'],
+      '대기':     ['입금을 기다리고 있어요', '제품은 입금 확인 후 준비돼요.'],
+      '입금확인': ['입금을 확인했어요', '수령일에 매장으로 오시면 돼요.'],
+      '현장결제': ['예약이 접수됐어요', '받으러 오실 때 매장에서 결제해 주시면 돼요.'],
+      '완료':     ['준비 완료', '매장에서 받아가실 수 있어요.'],
+      '취소':     ['취소된 예약이에요', '문의가 필요하시면 매장으로 연락 주세요.'],
     },
     delivery: {
-      '대기':     ['입금 대기 중입니다', '제품은 입금 확인 후 준비되어 발송됩니다.'],
-      '입금확인': ['입금이 확인되었습니다', '발송 일정에 맞춰 보냅니다.'],
-      '현장결제': ['매장에서 결제하실 예정입니다', '자세한 내용은 매장으로 문의해 주세요.'],
-      '완료':     ['발송 완료', '택배사 배송이 시작되었습니다.'],
-      '취소':     ['취소된 예약입니다', '문의가 필요하시면 매장으로 연락 주세요.'],
+      '대기':     ['입금을 기다리고 있어요', '제품은 입금 확인 후 준비해서 발송해요.'],
+      '입금확인': ['입금을 확인했어요', '발송 일정에 맞춰 보내드려요.'],
+      '현장결제': ['매장에서 결제하실 예정이에요', '자세한 내용은 매장으로 문의해 주세요.'],
+      '완료':     ['발송 완료', '택배사 배송이 시작됐어요.'],
+      '취소':     ['취소된 예약이에요', '문의가 필요하시면 매장으로 연락 주세요.'],
     },
   };
 
@@ -59,10 +59,10 @@
     var cc = CONFIG.customerChange || {};
     var rule = cc.enabled === false
       ? (contact ? '변경·취소가 필요하시면 — ' + escapeHtml(contact) : '변경·취소는 매장으로 문의해 주세요.')
-      : '조회 후 <b>예약 변경</b>·<b>예약 취소</b> 버튼으로 직접 처리하실 수 있습니다. ' +
-        escapeHtml(HF.changeRuleText()) + '만 됩니다.';
+      : '조회 후 <b>예약 변경</b>·<b>예약 취소</b> 버튼으로 직접 하실 수 있어요. ' +
+        escapeHtml(HF.changeRuleText()) + '만 돼요.';
     $('noteBox').innerHTML = '<strong>안내</strong><ul>' +
-      '<li>예약하실 때 받으신 예약번호(' + escapeHtml(codeSample()) + ' 형태)가 필요합니다.</li>' +
+      '<li>예약하실 때 받으신 예약번호(' + escapeHtml(codeSample()) + ' 형태)가 필요해요.</li>' +
       '<li>' + rule + '</li>' +
       '<li>세트·수량을 바꾸시려면 입금 전에 취소하고 다시 예약해 주세요.</li></ul>';
   }
@@ -75,11 +75,11 @@
     var phone = $('phone').value.trim();
 
     if (!code || !phone) return fail('예약번호와 연락처를 모두 입력해 주세요.');
-    if (!CONFIG.sheetUrl) return fail('아직 조회를 준비 중입니다. 매장으로 문의해 주세요.');
+    if (!CONFIG.sheetUrl) return fail('아직 조회를 준비 중이에요. 매장으로 문의해 주세요.');
 
     var btn = $('findBtn');
     btn.disabled = true;
-    btn.textContent = '조회 중입니다…';
+    btn.textContent = '조회 중이에요…';
     $('err').hidden = true;
 
     fetch(CONFIG.sheetUrl + '?action=lookup' +
@@ -90,7 +90,7 @@
         return r.json();
       })
       .then(function (data) {
-        if (!data || data.ok !== true) throw new Error((data && data.error) || '조회에 실패했습니다.');
+        if (!data || data.ok !== true) throw new Error((data && data.error) || '조회하지 못했어요.');
         phoneUsed = phone;
         show(data.order);
       })
@@ -127,7 +127,7 @@
     var delivery = (o.method || 'pickup') === 'delivery';
     var map = STATE[delivery ? 'delivery' : 'pickup'] || {};
     var fallback = (CONFIG.defaultStatus || {})[delivery ? 'delivery' : 'pickup'];
-    var st = map[o.status] || map[fallback] || ['접수되었습니다', ''];
+    var st = map[o.status] || map[fallback] || ['접수됐어요', ''];
 
     var box = $('result');
     box.innerHTML = '';
@@ -216,14 +216,14 @@
     }
     if (EDITABLE.indexOf(o.status || '대기') === -1) {
       msg.textContent = delivery
-        ? '이미 발송된 예약은 변경·취소할 수 없습니다. 매장으로 문의해 주세요.'
-        : '이미 전달된 예약입니다.';
+        ? '이미 발송된 예약은 변경·취소할 수 없어요. 매장으로 문의해 주세요.'
+        : '이미 전달된 예약이에요.';
       wrap.appendChild(msg);
       box.appendChild(wrap);
       return;
     }
     if (!limit.open) {
-      msg.textContent = '변경·취소 가능 기한(' + korDate(limit.until) + ')이 지났습니다. ' +
+      msg.textContent = '변경·취소 가능 기한(' + korDate(limit.until) + ')이 지났어요. ' +
                         '급한 사정은 매장으로 문의해 주세요.';
       wrap.appendChild(msg);
       box.appendChild(wrap);
@@ -231,7 +231,7 @@
     }
 
     msg.textContent = (limit.fixed ? '' : '수령일 ' + limit.days + '일 전인 ') +
-                      korDate(limit.until) + '까지 직접 변경·취소하실 수 있습니다.';
+                      korDate(limit.until) + '까지 직접 변경·취소하실 수 있어요.';
     wrap.appendChild(msg);
 
     var row = document.createElement('div');
@@ -283,7 +283,7 @@
       body: JSON.stringify(body),
     }).then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data || data.ok !== true) throw new Error((data && data.error) || '처리하지 못했습니다.');
+        if (!data || data.ok !== true) throw new Error((data && data.error) || '처리하지 못했어요.');
         return data;
       });
   }
@@ -292,17 +292,17 @@
     var paid = o.status === '입금확인';
     var text = o.code + ' 예약을 취소할까요?\n' +
       (paid ? '이미 입금하신 금액의 환불은 매장으로 문의해 주세요.\n' : '') +
-      '취소한 뒤에는 되돌릴 수 없습니다.';
+      '취소한 뒤에는 되돌릴 수 없어요.';
     if (!confirm(text)) return;
 
     btn.disabled = true;
-    btn.textContent = '취소 중입니다…';
+    btn.textContent = '취소 중이에요…';
     sendCustomer({ op: 'cancel' }).then(function (data) {
       show(data.order);
       var head = $('result').querySelector('.order-head__desc');
       if (head) head.textContent = paid
-        ? '취소되었습니다. 입금하신 금액의 환불은 매장으로 문의해 주세요.'
-        : '취소되었습니다. 다시 예약하시려면 아래 「예약하러 가기」를 눌러주세요.';
+        ? '취소했어요. 입금하신 금액의 환불은 매장으로 문의해 주세요.'
+        : '취소했어요. 다시 예약하시려면 아래 「예약하러 가기」를 눌러주세요.';
     }).catch(function (e) {
       btn.disabled = false;
       btn.textContent = '예약 취소';
@@ -480,11 +480,11 @@
       try { payload = get(); } catch (e) { err.textContent = e.message; err.hidden = false; return; }
       err.hidden = true;
       save.disabled = true;
-      save.textContent = '저장 중입니다…';
+      save.textContent = '저장 중이에요…';
       sendCustomer(payload).then(function (data) {
         show(data.order);
         var head = $('result').querySelector('.order-head__desc');
-        if (head) head.textContent = '변경되었습니다. ' + head.textContent;
+        if (head) head.textContent = '변경했어요. ' + head.textContent;
       }).catch(function (e) {
         save.disabled = false;
         save.textContent = '이대로 변경';

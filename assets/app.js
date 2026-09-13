@@ -14,11 +14,11 @@
 
   var METHODS = {
     pickup:   { label: '매장 픽업', icon: '🏠',
-                desc: '매장에서 직접 받아가는 방법입니다. 제품은 입금 확인 후 준비됩니다.',
-                descOnsite: '매장에서 직접 받아가는 방법입니다. 결제는 받으실 때 매장에서 합니다.' },
+                desc: '매장에서 직접 받아가는 방법이에요. 제품은 입금 확인 후 준비돼요.',
+                descOnsite: '매장에서 직접 받아가는 방법이에요. 결제는 받으실 때 매장에서 하시면 돼요.' },
     delivery: { label: '택배 발송', icon: '📦',
-                desc: '원하는 주소로 보내는 방법입니다. 제품은 입금 확인 후 발송됩니다.',
-                descOnsite: '원하는 주소로 보내는 방법입니다.' },
+                desc: '원하는 주소로 보내는 방법이에요. 제품은 입금 확인 후 발송해요.',
+                descOnsite: '원하는 주소로 보내는 방법이에요.' },
   };
 
   /* 배송비 안내 한 줄. config.js 의 delivery.fee / freeOver 를 그대로 읽습니다. */
@@ -139,16 +139,16 @@
 
   /* 마감까지 남은 시간. 마지막 날이면 자정까지 남은 시·분으로 알려줍니다. */
   function closeMessage(left) {
-    if (left > 1) return '예약 마감까지 ' + left + '일 남았습니다.';
-    if (left === 1) return '내일 자정에 예약이 마감됩니다.';
+    if (left > 1) return '예약 마감까지 ' + left + '일 남았어요.';
+    if (left === 1) return '내일 자정에 예약이 마감돼요.';
 
     var now = new Date();
     var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);   // 오늘 밤 자정
     var mins = Math.ceil((end - now) / 60000);
-    if (mins <= 0) return '예약이 마감되었습니다.';
-    if (mins < 60) return '예약 마감까지 ' + mins + '분 남았습니다.';
+    if (mins <= 0) return '예약이 마감됐어요.';
+    if (mins < 60) return '예약 마감까지 ' + mins + '분 남았어요.';
     var h = Math.floor(mins / 60), m = mins % 60;
-    return '오늘 자정 마감 · ' + h + '시간' + (m ? ' ' + m + '분' : '') + ' 남았습니다.';
+    return '오늘 자정 마감 · ' + h + '시간' + (m ? ' ' + m + '분' : '') + ' 남았어요.';
   }
 
   /* 마지막 날에만 1분마다 문구를 새로 씁니다. 자정이 지나면 화면을 새로 불러
@@ -170,16 +170,16 @@
 
     if (CONFIG.practice && daysToOpen() > 0) {
       box.innerHTML = '<div class="banner banner--warn">' +
-        '<strong>연습 중입니다.</strong> 정식 예약은 ' + korDate(CONFIG.openDate) + '부터 시작됩니다.</div>';
+        '<strong>연습 중이에요.</strong> 정식 예약은 ' + korDate(CONFIG.openDate) + '부터 시작해요.</div>';
     }
 
     if (isBeforeOpen()) {
       box.innerHTML = '<div class="banner banner--soon">' +
-        '<strong>예약은 ' + korDate(CONFIG.openDate) + '부터 시작됩니다.</strong><br>' +
+        '<strong>예약은 ' + korDate(CONFIG.openDate) + '부터 시작해요.</strong><br>' +
         '(' + daysToOpen() + '일 남음) 그때 다시 찾아와 주세요.</div>';
     } else if (isClosed()) {
       box.innerHTML = '<div class="banner banner--closed">' +
-        '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.' +
+        '<strong>예약이 마감됐어요.</strong><br>문의는 매장으로 연락 주세요.' +
         (contactLine() ? '<br>' + contactLine() : '') + '</div>';
     } else if (left <= 3 && left !== Infinity) {
       /* 마지막 날에는 자정까지 남은 시간을 1분마다 새로 세어 보여줍니다. */
@@ -196,7 +196,7 @@
         '<span class="banner__mark">준비 중</span>' +
         '<strong>아직 손님에게 이 링크를 보내지 마세요.</strong>' +
         '<span>구글 시트가 연결되지 않아, 지금 넣은 예약은 매장으로 전달되지 않고 ' +
-        '이 기기에만 저장됩니다. 화면을 미리 확인하는 용도로만 사용해 주세요.</span>' +
+        '이 기기에만 저장돼요. 화면을 미리 확인하는 용도로만 써 주세요.</span>' +
         '</div>');
     }
   }
@@ -210,7 +210,7 @@
       return contact ? '예약 변경·취소 문의 — ' + contact : '예약 변경·취소는 매장으로 문의해 주세요.';
     }
     var what = mode === 'pickup' ? '수령날짜 및 시간 변경·취소는' : '받는 분·배송지 변경 및 취소는';
-    return what + ' 예약 확인 화면에서 ' + HF.changeRuleText(mode) + ' 직접 하실 수 있습니다. 세트·수량 변경은 입금 전에 취소하고 다시 예약해 주세요.';
+    return what + ' 예약 확인 화면에서 ' + HF.changeRuleText(mode) + ' 직접 하실 수 있어요. 세트·수량을 바꾸시려면 입금 전에 취소하고 다시 예약해 주세요.';
   }
 
   function renderNote() {
@@ -222,7 +222,7 @@
     } else {
       if (CONFIG.delivery.notice) items.push(CONFIG.delivery.notice);
       if (feeOf(itemsPrice()) === null) {
-        items.push('배송비는 아직 확정되지 않아 합계에서 빠져 있습니다. 매장에서 함께 안내드립니다.');
+        items.push('배송비가 아직 정해지지 않아 합계에서 빠져 있어요. 매장에서 함께 안내드릴게요.');
       }
     }
     if (CONFIG.closeDate) items.push('예약 마감: ' + CONFIG.closeDate.replace(/-/g, '. ') + ' 까지');
@@ -271,7 +271,7 @@
       var desc = document.createElement('span');
       desc.className = 'method__desc';
       desc.textContent = closed
-        ? (CONFIG[key].closedNotice || m.label + ' 예약이 마감되었습니다.')
+        ? (CONFIG[key].closedNotice || m.label + ' 예약이 마감됐어요.')
         : methodDesc(key);
       body.append(name, desc);
       if (key === 'delivery' && !closed) {           // 배송비는 따로 한 줄
@@ -310,8 +310,8 @@
     $('ordererTitle').textContent = isPickup ? '예약자 정보' : '주문자 정보';
     /* 매장에서 따로 연락드리지 않으므로, 연락처의 쓰임을 사실대로 적습니다. */
     $('ordererHint').textContent = isPickup
-      ? '픽업하실 때 예약을 확인하는 데 사용됩니다.'
-      : '주문 확인에 사용되며, 문제가 있을 때만 연락드립니다.';
+      ? '픽업하실 때 예약을 확인하는 데 써요.'
+      : '주문 확인에 쓰고, 문제가 있을 때만 연락드려요.';
 
     $('memoField').hidden = !CONFIG.showMemo;
     $('cashField').hidden = !cashOn();
@@ -432,7 +432,7 @@
       if (!soldOut && !pending && left !== null && left <= 10) {
         var leftEl = document.createElement('p');
         leftEl.className = 'product__left';
-        leftEl.textContent = left + '개 남았습니다';
+        leftEl.textContent = left + '개 남았어요';
         body.appendChild(leftEl);
       }
 
@@ -595,7 +595,7 @@
     box.innerHTML = '';
 
     if (!items.length) {
-      box.innerHTML = '<p class="summary__empty">선택하신 선물세트가 여기에 표시됩니다.</p>';
+      box.innerHTML = '<p class="summary__empty">선택하신 선물세트가 여기에 나와요.</p>';
       return;
     }
 
@@ -892,9 +892,9 @@
       signal: ctrl ? ctrl.signal : undefined,
     }).catch(function (e) {
       if (e && e.name === 'AbortError') {
-        throw new Error('저장소 응답이 없습니다. 예약이 접수됐을 수도 있으니, 다시 신청하기 전에 「예약 확인」에서 연락처로 조회해 보세요.');
+        throw new Error('저장소가 응답하지 않아요. 예약이 접수됐을 수도 있으니, 다시 신청하기 전에 「예약 확인」에서 연락처로 조회해 보세요.');
       }
-      throw new Error('저장소에 연결하지 못했습니다. 인터넷 연결을 확인해 주세요.');
+      throw new Error('저장소에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.');
     }).then(function (res) {
       clearTimeout(timer);
       if (!res.ok) throw new Error('저장소 응답 오류 ' + res.status);
@@ -904,9 +904,9 @@
       try { data = JSON.parse(text); } catch (e) {
         /* 예약 데이터가 아니라 구글 로그인 화면 등이 돌아온 경우.
            Apps Script 배포의 '액세스 권한' 이 '모든 사용자' 가 아닐 때 이렇게 됩니다. */
-        throw new Error('저장소가 예약 데이터가 아닌 응답을 보냈습니다. Apps Script 배포의 액세스 권한이 「모든 사용자」인지 확인해 주세요.');
+        throw new Error('저장소가 예약 데이터가 아닌 응답을 보냈어요. Apps Script 배포의 액세스 권한이 「모든 사용자」인지 확인해 주세요.');
       }
-      if (!data || data.ok !== true) throw new Error((data && data.error) || '저장에 실패했습니다.');
+      if (!data || data.ok !== true) throw new Error((data && data.error) || '저장하지 못했어요.');
       return data.code;
     });
   }
@@ -1050,7 +1050,7 @@
         ctx.textAlign = 'center';
         ctx.fillStyle = '#2f3630';
         ctx.font = '700 30px ' + CARD_FONT;
-        ctx.fillText('예약이 접수되었습니다', W / 2, it.y + 30);
+        ctx.fillText('예약이 접수됐어요', W / 2, it.y + 30);
       } else if (it.t === 'code') {
         ctx.fillStyle = '#f2f7ec';
         roundRect(ctx, PAD, it.y, INNER, 92, 18);
@@ -1142,7 +1142,7 @@
     };
 
     btn.disabled = true;
-    btn.textContent = '만드는 중입니다…';
+    btn.textContent = '만드는 중이에요…';
 
     var ready = (document.fonts && document.fonts.ready)
       ? document.fonts.ready.catch(function () {})
@@ -1153,7 +1153,7 @@
       try {
         cv = drawCard(code, rows, payLines);
       } catch (e) {
-        done('저장하지 못했습니다');
+        done('저장하지 못했어요');
         return;
       }
 
@@ -1170,7 +1170,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      done('저장되었습니다');
+      done('저장했어요');
     });
   }
 
@@ -1185,16 +1185,16 @@
     box.className = 'card done';
     box.innerHTML =
       '<div class="done__mark">✓</div>' +
-      '<h2 class="done__title">예약이 접수되었습니다</h2>';
+      '<h2 class="done__title">예약이 접수됐어요</h2>';
 
     var lead = document.createElement('p');
     lead.className = 'done__text';
     var prepaid = isPrepay(order.method);
     lead.textContent = !prepaid
-      ? '아래 예약번호를 저장해 두시고, 수령일에 매장으로 오시면 됩니다.'
+      ? '아래 예약번호를 저장해 두시고, 수령일에 매장으로 오시면 돼요.'
       : (order.method === 'pickup'
-         ? '아래 계좌로 입금이 완료되어야 제품이 준비됩니다.'
-         : '아래 계좌로 입금이 완료되어야 제품이 준비되어 발송됩니다.');
+         ? '아래 계좌로 입금이 완료되어야 제품이 준비돼요.'
+         : '아래 계좌로 입금이 완료되어야 제품을 준비해서 발송해요.');
     box.appendChild(lead);
 
     var codeEl = document.createElement('div');
@@ -1207,7 +1207,7 @@
     codeHint.className = 'done__codehint';
     codeHint.textContent = order.method === 'pickup'
       ? '픽업하실 때 직원에게 이 번호를 보여주세요.'
-      : '문의하실 때 이 번호를 알려주시면 빠릅니다.';
+      : '문의하실 때 이 번호를 알려주시면 빨라요.';
     box.appendChild(codeHint);
 
     /* 선입금으로 받는 방법: 입금 안내 */
@@ -1241,7 +1241,7 @@
         copyBtn.textContent = '계좌번호 복사';
         copyBtn.addEventListener('click', function () {
           copyText(bank.account.replace(/[^0-9]/g, '')).then(function (done) {
-            copyBtn.textContent = done ? '복사되었습니다' : '복사하지 못했습니다';
+            copyBtn.textContent = done ? '복사했어요' : '복사하지 못했어요';
             copyBtn.classList.toggle('is-done', done);
             setTimeout(function () {
               copyBtn.textContent = '계좌번호 복사';
@@ -1253,7 +1253,7 @@
       } else {
         var later = document.createElement('p');
         later.className = 'paybox__sub';
-        later.textContent = '입금 계좌는 매장에서 따로 안내합니다.';
+        later.textContent = '입금 계좌는 매장에서 따로 안내드릴게요.';
         pay.appendChild(later);
       }
 
@@ -1326,12 +1326,12 @@
     if (prepaid) {
       var b = HF.bank();
       if (b.bankName && b.account) {
-        payLines.push({ text: '입금이 완료되어야 제품이 준비됩니다' });
+        payLines.push({ text: '입금이 완료되어야 제품이 준비돼요' });
         payLines.push({ text: b.bankName + ' ' + b.account, big: true });
         if (b.holder) payLines.push({ text: '예금주 ' + b.holder });
         payLines.push({ text: '입금자명 「' + order.name + '」' });
       } else {
-        payLines.push({ text: '입금 계좌는 매장에서 따로 안내합니다.' });
+        payLines.push({ text: '입금 계좌는 매장에서 따로 안내드릴게요.' });
       }
     }
 
@@ -1378,12 +1378,12 @@
     submitting = true;
     var btn = $('submitBtn');
     btn.disabled = true;
-    btn.textContent = '접수 중입니다…';
+    btn.textContent = '접수 중이에요…';
     $('errSubmit').hidden = true;
 
     /* 구글 저장소는 처음 깨어날 때 몇 초 걸립니다. 멈춘 게 아니라고 알려줍니다. */
     var slow = setTimeout(function () {
-      if (submitting) btn.textContent = '접수 중입니다… 조금 더 걸리고 있어요';
+      if (submitting) btn.textContent = '접수 중이에요… 조금만 기다려 주세요';
     }, 5000);
 
     var order;
@@ -1410,7 +1410,7 @@
       btn.disabled = false;
       btn.textContent = '예약 신청하기';
       var box = $('errSubmit');
-      box.textContent = '전송에 실패했습니다. 잠시 후 다시 시도하시거나 매장으로 연락 주세요. (' + err.message + ')';
+      box.textContent = '보내지 못했어요. 잠시 후 다시 시도하시거나 매장으로 연락 주세요. (' + err.message + ')';
       box.hidden = false;
     });
   }
@@ -1492,8 +1492,8 @@
       var btn = $('submitBtn');
       btn.disabled = true;
       btn.textContent = isBeforeOpen()
-        ? korDate(CONFIG.openDate) + '부터 예약할 수 있습니다'
-        : '예약이 마감되었습니다';
+        ? korDate(CONFIG.openDate) + '부터 예약할 수 있어요'
+        : '예약이 마감됐어요';
       $('form').querySelectorAll('input, textarea').forEach(function (el) { el.disabled = true; });
     }
   }
