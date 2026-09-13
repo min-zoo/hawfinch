@@ -155,8 +155,10 @@
         '<strong>예약이 마감되었습니다.</strong><br>문의는 매장으로 연락 주세요.' +
         (contactLine() ? '<br>' + contactLine() : '') + '</div>';
     } else if (left <= 3 && left !== Infinity) {
-      box.innerHTML = '<div class="banner banner--warn"><strong>예약 마감이 ' +
-        (left === 0 ? '오늘' : left + '일') + ' 남았습니다.</strong></div>';
+      var msg = left === 0 ? '오늘 예약이 마감됩니다.'
+              : left === 1 ? '내일 예약이 마감됩니다.'
+              : '예약 마감까지 ' + left + '일 남았습니다.';
+      box.innerHTML = '<div class="banner banner--warn"><strong>' + msg + '</strong></div>';
     }
 
     /* 구글 시트를 연결하기 전에는 예약이 매장으로 가지 않습니다.
